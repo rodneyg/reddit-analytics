@@ -16,6 +16,7 @@ export default function Home() {
   const [loading, setLoading] = useState(false)
   const [results, setResults] = useState<any>(null)
   const [error, setError] = useState<string | null>(null)
+  const [insight, setInsight] = useState<string>("")
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -23,9 +24,10 @@ export default function Home() {
 
     setLoading(true)
     setError(null)
+    setInsight("")
 
     const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 45000) // 45s timeout for slow backend
+    const timeout = setTimeout(() => controller.abort(), 25000) // 25s timeout
 
     try {
       console.log("🔍 Starting analysis for subreddit:", subreddit, "over", timeRange, "days")
@@ -42,9 +44,37 @@ export default function Home() {
 
       const data = await response.json()
       console.log("✅ Received analysis data:", data)
-      console.log("🧠 Insight in response:", data.insights)
 
       setResults(data)
+
+      const prompt = `Analyze Reddit posting patterns for r/${subreddit} over the past ${timeRange} days. Top times: ${data.bestTimes
+        .map((t: any) => `${t.formattedTime} (${t.score.toFixed(2)})`) 
+        .join(", ")}`
+
+      const gptRes = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${process.env.NEXT_PUBLIC_OPENAI_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "gpt-4",
+          messages: [{ role: "user", content: prompt }],
+          temperature: 0.7,
+        }),
+      })
+
+      if (!gptRes.ok) {
+        const errorText = await gptRes.text()
+        console.error("❌ GPT error:", gptRes.status, errorText)
+        setInsight("No insights returned from AI.")
+        return
+      }
+
+      const gptJson = await gptRes.json()
+      const aiContent = gptJson.choices?.[0]?.message?.content?.trim()
+      console.log("🧠 Insight generated:", aiContent)
+      setInsight(aiContent || "No insights returned from AI.")
     } catch (err: any) {
       if (err.name === "AbortError") {
         console.error("⏱️ Request timed out.")
@@ -106,16 +136,10 @@ export default function Home() {
             <div className="mt-8 space-y-8">
               <BestTimesList bestTimes={results.bestTimes} />
               <SubredditHeatmap heatmapData={results.heatmapData} />
-              {results?.insights ? (
+              {insight && (
                 <div className="mt-8 p-6 bg-muted rounded-lg border max-w-3xl mx-auto">
                   <h2 className="text-xl font-semibold mb-2">Strategic Insights</h2>
-                  <p className="whitespace-pre-wrap text-muted-foreground">
-                    {results.insights}
-                  </p>
-                </div>
-              ) : (
-                <div className="mt-4 text-sm text-muted-foreground italic">
-                  No insights returned from AI.
+                  <p className="whitespace-pre-wrap text-muted-foreground">{insight}</p>
                 </div>
               )}
             </div>
@@ -125,7 +149,7 @@ export default function Home() {
 
       <footer className="mt-16 w-full border-t pt-6 text-center text-sm text-muted-foreground">
         <p className="mb-2">
-          Built by{" "}
+          Built by {" "}
           <a
             href="https://rodneygainous.com"
             className="font-medium text-primary underline hover:opacity-80"
