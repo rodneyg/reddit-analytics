@@ -1,6 +1,6 @@
 # Reddit Post Time Analyzer
 
-Find the best time to post on any subreddit, based on real engagement data.
+**Find the best time to post on any subreddit, based on real engagement data.**
 
 This tool analyzes recent posts from a subreddit, calculates when posts get the most upvotes and comments, and visualizes the best posting times with a heatmap, a top-times list, and GPT-powered strategic insights.
 
@@ -8,80 +8,94 @@ This tool analyzes recent posts from a subreddit, calculates when posts get the 
 
 ## 🔍 What It Does
 
-- ✅ Analyze engagement from the past 7 or 30 days
-- ✅ Calculate score per hour/day (score + comments)
-- ✅ Display a clean heatmap and top 3 time slots
-- ✅ Summarize strategy using OpenAI
-- ✅ Copy insights to clipboard
-- ✅ Share a pre-filled link to your analysis
-- ✅ Built with real Reddit API (OAuth) for accuracy
+✅ Analyze engagement from the past **7 or 30 days**  
+✅ Calculate score per hour/day *(upvotes + comments)*  
+✅ Display a clean **heatmap** and top 3 time slots  
+✅ Generate GPT-powered strategy summaries  
+✅ Copy insights to clipboard  
+✅ Share pre-filled links to any analysis  
+✅ Built with **Reddit OAuth API** for real-time accuracy  
 
 ---
 
 ## 🛠 Tech Stack
 
-- [Next.js](https://nextjs.org/) (App Router)
-- [TypeScript](https://www.typescriptlang.org/)
-- [Tailwind CSS](https://tailwindcss.com/)
-- [Firebase](https://firebase.google.com/) (planned auth/history)
-- [Recharts](https://recharts.org/) for visualization
-- [OpenAI API](https://platform.openai.com/) for insights
-- [Vercel](https://vercel.com/) for deployment
+- Next.js (App Router)
+- TypeScript
+- Tailwind CSS
+- Recharts (for visualizations)
+- OpenAI API (strategic insights)
+- Firebase *(planned: auth + history logging)*
+- Vercel (frontend deployment)
+- Express + Node.js *(backend via Render)*
 
 ---
 
 ## 🚀 Get Started
 
-1. Clone the repo
+### 1. Clone this repo
 
 ```bash
 git clone https://github.com/yourusername/reddit-analyzer.git
 cd reddit-analyzer
-```
-
-2. Install dependencies
-
-```bash
 npm install
 ```
 
-3. Create `.env.local` with your API keys
+### 2. Deploy your own backend
+
+Use the provided backend repo to handle Reddit OAuth securely:
+
+🔗 https://github.com/rodneyg/reddit-analyzer-backend
+
+Deploy it on Render, set these environment variables:
 
 ```
 REDDIT_CLIENT_ID=your_id
 REDDIT_CLIENT_SECRET=your_secret
-OPENAI_API_KEY=your_openai_key
+REDDIT_USERNAME=your_reddit_username
+REDDIT_PASSWORD=your_reddit_password
 ```
 
-4. Run locally
+### 3. Connect frontend to backend
+
+Update your frontend API route (e.g. route.ts) to point to your backend’s Render URL:
+
+```javascript
+const BASE_URL = "https://your-backend.onrender.com"
+```
+
+### 4. Start frontend locally
 
 ```bash
 npm run dev
 ```
 
-Visit `http://localhost:3000`
+Then visit http://localhost:3000
 
----
+⸻
 
 ## 🧠 How It Works
+	•	Fetches latest ~500 Reddit posts using Reddit OAuth API
+	•	Aggregates post scores by day and hour (UTC)
+	•	Builds a day/hour heatmap of average engagement
+	•	Filters low-signal data for clarity
+	•	Ranks top 3 time slots with highest average score
+	•	Uses OpenAI to write a concise posting strategy
+	•	Supports clipboard copy + shareable links
 
-- Fetches latest 500 Reddit posts for a subreddit
-- Aggregates by day + hour UTC
-- Filters low-signal bins to reduce visual noise
-- Calculates top engagement slots
-- Uses OpenAI to summarize posting strategy
-- Supports shareable links and clipboard copy
-
----
+⸻
 
 ## 🙌 Credits
 
-Built by Rodney Gainous Jr  
-If you found it useful: ☕ [Support on Ko-fi](https://ko-fi.com/)
+Built by Rodney Gainous Jr
 
----
+If you found it useful:  
+☕ Support on Ko-fi
+
+⸻
 
 ## 📄 License
 
-MIT — do what you want, but attribution appreciated.
-```
+MIT — use it, remix it, build on it. Attribution appreciated.
+
+---
