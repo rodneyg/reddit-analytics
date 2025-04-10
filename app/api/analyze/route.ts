@@ -7,7 +7,7 @@ const cache = new Map()
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams
   const subreddit = searchParams.get("subreddit")
-  const days = Number.parseInt(searchParams.get("days") || "30")
+  const days = searchParams.get("days") || "30"
 
   if (!subreddit) {
     return NextResponse.json({ error: "Subreddit is required" }, { status: 400 })
@@ -21,51 +21,25 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const token = await getRedditAccessToken()
-    const posts: any[] = []
-    let after: string | null = null
+    const response = await fetch(`https://reddit-analyzer-backend.onrender.com/analyze?subreddit=${subreddit}&days=${days}&limit=100`)
 
-    for (let i = 0; i < 5; i++) {
-      const url = `https://oauth.reddit.com/r/${subreddit}/new?limit=100${after ? `&after=${after}` : ''}`
-      const res = await fetch(url, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "User-Agent": process.env.REDDIT_USER_AGENT!,
-        },
-      })
-
-      if (!res.ok) throw new Error(`Reddit API error: ${res.status}`)
-
-      const json = await res.json()
-      const batch = json.data.children.map((p: any) => p.data)
-      posts.push(...batch)
-
-      after = json.data.after
-      if (!after) break
+    if (!response.ok) {
+      throw new Error(`Backend error: ${response.status}`)
     }
 
-    if (posts.length === 0) {
-      return NextResponse.json({ error: "No posts found for this subreddit" }, { status: 404 })
-    }
-
-    const { heatmapData, bestTimes } = processRedditData(posts)
-
-    // Get LLM summary
-    const insights = await generateInsight(subreddit, days, heatmapData, bestTimes)
-
-    const result = { heatmapData, bestTimes, insights }
-
+    const data = await response.json()
     cache.set(cacheKey, {
       timestamp: Date.now(),
-      data: result,
+      data,
     })
 
-    return NextResponse.json(result)
+    return NextResponse.json(data)
   } catch (error) {
-    console.error("Error analyzing subreddit:", error)
+    console.error("Error forwarding to backend:", error)
     return NextResponse.json({ error: "Failed to analyze subreddit" }, { status: 500 })
   }
 }
+
 
 function processRedditData(posts: any[]) {
   const dayHourBins: Record<string, { total: number; count: number }> = {}

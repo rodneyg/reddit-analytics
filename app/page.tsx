@@ -1,12 +1,12 @@
 "use client"
 
 import type React from "react"
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Loader2, Clipboard, Link as LinkIcon } from "lucide-react"
+import { Loader2 } from "lucide-react"
 import SubredditHeatmap from "@/components/subreddit-heatmap"
 import BestTimesList from "@/components/best-times-list"
 
@@ -16,8 +16,6 @@ export default function Home() {
   const [loading, setLoading] = useState(false)
   const [results, setResults] = useState<any>(null)
   const [error, setError] = useState<string | null>(null)
-  const [copied, setCopied] = useState(false)
-  const [linkCopied, setLinkCopied] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -26,35 +24,39 @@ export default function Home() {
     setLoading(true)
     setError(null)
 
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 25000) // 25s timeout
+
     try {
-      const response = await fetch(`/api/analyze?subreddit=${subreddit}&days=${timeRange}`)
+      console.log("🔍 Starting analysis for subreddit:", subreddit, "over", timeRange, "days")
+
+      const response = await fetch(`/api/analyze?subreddit=${subreddit}&days=${timeRange}`, {
+        signal: controller.signal,
+      })
 
       if (!response.ok) {
-        throw new Error(`Error: ${response.status}`)
+        const text = await response.text()
+        console.error("❌ Non-200 response:", response.status, text)
+        throw new Error(`Error ${response.status}: ${text}`)
       }
 
       const data = await response.json()
+      console.log("✅ Received analysis data:", data)
+
       setResults(data)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to analyze subreddit")
+    } catch (err: any) {
+      if (err.name === "AbortError") {
+        console.error("⏱️ Request timed out.")
+        setError("Server took too long to respond. Try again in a few seconds.")
+      } else {
+        console.error("❗ Error analyzing subreddit:", err)
+        setError(err?.message || "Failed to analyze subreddit")
+      }
     } finally {
+      clearTimeout(timeout)
       setLoading(false)
     }
   }
-
-  // Auto-load from URL
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    const sub = params.get("subreddit")
-    const days = params.get("days")
-    if (sub) {
-      setSubreddit(sub)
-      if (days) setTimeRange(days)
-      setTimeout(() => {
-        handleSubmit(new Event("submit") as any)
-      }, 100)
-    }
-  }, [])
 
   return (
     <main className="container mx-auto py-10 px-4">
@@ -93,59 +95,24 @@ export default function Home() {
             </div>
           </form>
 
-          {error && <div className="mt-4 p-4 bg-destructive/10 text-destructive rounded-md">{error}</div>}
-
-          {results && !loading && (
-            <div className="mt-8 space-y-6">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-sm text-muted-foreground">
-                  Analyzed:{" "}
-                  <a
-                    href={`https://reddit.com/r/${subreddit}`}
-                    target="_blank"
-                    className="underline hover:text-primary"
-                  >
-                    r/{subreddit}
-                  </a>
-                </p>
-                <p className="text-xs text-muted-foreground sm:text-right">All times shown in UTC</p>
-              </div>
-
-              <BestTimesList bestTimes={results.bestTimes} />
-              <SubredditHeatmap heatmapData={results.heatmapData} />
-
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  const url = `${window.location.origin}/?subreddit=${subreddit}&days=${timeRange}`
-                  navigator.clipboard.writeText(url)
-                  setLinkCopied(true)
-                  setTimeout(() => setLinkCopied(false), 2000)
-                }}
-              >
-                <LinkIcon className="w-4 h-4 mr-2" />
-                {linkCopied ? "Link copied!" : "Copy Shareable Link"}
-              </Button>
+          {error && (
+            <div className="mt-4 p-4 bg-destructive/10 text-destructive rounded-md">
+              {error}
             </div>
           )}
 
-          {results?.insights && (
-            <div className="mt-8 p-6 bg-muted rounded-lg border max-w-3xl mx-auto relative">
-              <h2 className="text-xl font-semibold mb-2">Strategic Insights</h2>
-              <Button
-                onClick={() => {
-                  navigator.clipboard.writeText(results.insights)
-                  setCopied(true)
-                  setTimeout(() => setCopied(false), 2000)
-                }}
-                className="absolute top-4 right-4 h-8 px-3 text-xs"
-                variant="secondary"
-              >
-                <Clipboard className="w-4 h-4 mr-1" />
-                {copied ? "Copied" : "Copy"}
-              </Button>
-              <p className="whitespace-pre-wrap text-muted-foreground">{results.insights}</p>
+          {results && !loading && (
+            <div className="mt-8 space-y-8">
+              <BestTimesList bestTimes={results.bestTimes} />
+              <SubredditHeatmap heatmapData={results.heatmapData} />
+              {results?.insights && (
+                <div className="mt-8 p-6 bg-muted rounded-lg border max-w-3xl mx-auto">
+                  <h2 className="text-xl font-semibold mb-2">Strategic Insights</h2>
+                  <p className="whitespace-pre-wrap text-muted-foreground">
+                    {results.insights}
+                  </p>
+                </div>
+              )}
             </div>
           )}
         </CardContent>
