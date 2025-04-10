@@ -25,7 +25,7 @@ export default function Home() {
     setError(null)
 
     const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 25000) // 25s timeout
+    const timeout = setTimeout(() => controller.abort(), 45000) // 45s timeout for slow backend
 
     try {
       console.log("🔍 Starting analysis for subreddit:", subreddit, "over", timeRange, "days")
@@ -42,6 +42,7 @@ export default function Home() {
 
       const data = await response.json()
       console.log("✅ Received analysis data:", data)
+      console.log("🧠 Insight in response:", data.insights)
 
       setResults(data)
     } catch (err: any) {
@@ -105,12 +106,16 @@ export default function Home() {
             <div className="mt-8 space-y-8">
               <BestTimesList bestTimes={results.bestTimes} />
               <SubredditHeatmap heatmapData={results.heatmapData} />
-              {results?.insights && (
+              {results?.insights ? (
                 <div className="mt-8 p-6 bg-muted rounded-lg border max-w-3xl mx-auto">
                   <h2 className="text-xl font-semibold mb-2">Strategic Insights</h2>
                   <p className="whitespace-pre-wrap text-muted-foreground">
                     {results.insights}
                   </p>
+                </div>
+              ) : (
+                <div className="mt-4 text-sm text-muted-foreground italic">
+                  No insights returned from AI.
                 </div>
               )}
             </div>
