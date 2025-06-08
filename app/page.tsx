@@ -20,7 +20,19 @@ export default function Home() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!subreddit) return
+
+    if (!subreddit) {
+      setError("Subreddit name cannot be empty.")
+      return
+    }
+
+    const subredditRegex = /^[a-zA-Z0-9_]{3,21}$/
+    if (!subredditRegex.test(subreddit)) {
+      setError(
+        "Subreddit name must be 3-21 characters long and can only contain alphanumeric characters and underscores."
+      )
+      return
+    }
 
     setLoading(true)
     setError(null)
@@ -103,7 +115,12 @@ export default function Home() {
                 <Input
                   placeholder="Enter subreddit name (e.g. technology)"
                   value={subreddit}
-                  onChange={(e) => setSubreddit(e.target.value)}
+                  onChange={(e) => {
+                    const cleanedValue = e.target.value
+                      .trim()
+                      .replace(/[^a-zA-Z0-9_]/g, "")
+                    setSubreddit(cleanedValue)
+                  }}
                   className="w-full"
                 />
               </div>
