@@ -7,15 +7,16 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
-import { Loader2, HelpCircle } from "lucide-react"
+import { Loader2, Download, HelpCircle } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Progress } from "@/components/ui/progress"
 import SubredditHeatmap from "@/components/subreddit-heatmap"
 import BestTimesList from "@/components/best-times-list"
 import BulkResults from "@/components/bulk-results"
-import { parseSubreddits } from "@/lib/utils"
+import { parseSubreddits, exportToJSON, exportToCSV } from "@/lib/utils"
 
 export default function Home() {
   const [subreddit, setSubreddit] = useState("")
@@ -110,6 +111,55 @@ export default function Home() {
       clearTimeout(timeout)
       setLoading(false)
     }
+  }
+
+  const handleExportJSON = () => {
+    if (!results) return
+    
+    const exportData = {
+      subreddit,
+      timeRange: `${timeRange} days`,
+      exportDate: new Date().toISOString(),
+      bestTimes: results.bestTimes,
+      heatmapData: results.heatmapData,
+      insights: insight
+    }
+    
+    const filename = `reddit-analysis-${subreddit}-${timeRange}days-${new Date().toISOString().split('T')[0]}.json`
+    exportToJSON(exportData, filename)
+  }
+
+  const handleExportCSV = () => {
+    if (!results) return
+    
+    // Export best times as CSV
+    const bestTimesData = results.bestTimes.map((time: any, index: number) => ({
+      rank: index + 1,
+      day: time.day,
+      hour: time.hour,
+      formattedTime: time.formattedTime,
+      averageScore: time.score.toFixed(2)
+    }))
+    
+    const filename = `reddit-analysis-${subreddit}-${timeRange}days-besttimes-${new Date().toISOString().split('T')[0]}.csv`
+    exportToCSV(bestTimesData, filename)
+  }
+
+  const handleExportHeatmapCSV = () => {
+    if (!results) return
+    
+    // Export heatmap data as CSV
+    const heatmapCSVData = results.heatmapData.map((data: any) => ({
+      day: data.day,
+      hour: data.hour,
+      formattedTime: data.formattedTime,
+      averageScore: data.z.toFixed(2),
+      dayIndex: data.y,
+      hourIndex: data.x
+    }))
+    
+    const filename = `reddit-analysis-${subreddit}-${timeRange}days-heatmap-${new Date().toISOString().split('T')[0]}.csv`
+    exportToCSV(heatmapCSVData, filename)
   }
 
   const handleBulkSubmit = async () => {
@@ -289,6 +339,29 @@ export default function Home() {
             {/* Single Results */}
             {results && !loading && !isBulkMode && (
               <div className="mt-8 space-y-8">
+                <div className="flex justify-between items-center">
+                  <h2 className="text-2xl font-semibold">Analysis Results</h2>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" size="sm">
+                        <Download className="h-4 w-4 mr-2" />
+                        Export Results
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={handleExportJSON}>
+                        Export as JSON
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={handleExportCSV}>
+                        Export Best Times (CSV)
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={handleExportHeatmapCSV}>
+                        Export Heatmap Data (CSV)
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
                 <BestTimesList bestTimes={results.bestTimes} />
                 <SubredditHeatmap heatmapData={results.heatmapData} />
                 {insight && (
