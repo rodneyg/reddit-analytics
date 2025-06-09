@@ -14,6 +14,7 @@ This tool analyzes recent posts from a subreddit, calculates when posts get the 
 ✅ Generate GPT-powered strategy summaries  
 ✅ Copy insights to clipboard  
 ✅ Share pre-filled links to any analysis  
+✅ **NEW: Bulk analysis** - analyze multiple subreddits at once  
 ✅ Built with **Reddit OAuth API** for real-time accuracy  
 
 ---
@@ -31,9 +32,45 @@ This tool analyzes recent posts from a subreddit, calculates when posts get the 
 
 ---
 
-## 🚀 Get Started
+## 📦 Bulk Analysis Feature
 
-### 1. Clone this repo
+Analyze multiple subreddits at once! Switch to bulk mode and enter subreddits using any of these formats:
+
+```
+# Comma separated
+technology, programming, reactjs
+
+# Line separated
+technology
+programming
+reactjs
+
+# Bullet points
+• technology
+• programming
+• reactjs
+
+# Dashes
+- technology
+- programming
+- reactjs
+
+# Mixed formats work too!
+technology, programming
+- reactjs
+• nextjs
+```
+
+**Features:**
+- Up to 10 subreddits per request
+- Progress indicator showing analysis status
+- Tabbed interface for easy browsing between results
+- Automatic parsing of Reddit URLs (r/subreddit, reddit.com/r/subreddit)
+- Error handling for individual failed analyses
+
+---
+
+## 🚀 Get Started
 
 ```bash
 git clone https://github.com/yourusername/reddit-analyzer.git
