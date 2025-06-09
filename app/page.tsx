@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Loader2, Download } from "lucide-react"
 import SubredditHeatmap from "@/components/subreddit-heatmap"
 import BestTimesList from "@/components/best-times-list"
@@ -119,8 +119,25 @@ export default function Home() {
       averageScore: time.score.toFixed(2)
     }))
     
-    const filename = `reddit-analysis-${subreddit}-${timeRange}days-${new Date().toISOString().split('T')[0]}.csv`
+    const filename = `reddit-analysis-${subreddit}-${timeRange}days-besttimes-${new Date().toISOString().split('T')[0]}.csv`
     exportToCSV(bestTimesData, filename)
+  }
+
+  const handleExportHeatmapCSV = () => {
+    if (!results) return
+    
+    // Export heatmap data as CSV
+    const heatmapCSVData = results.heatmapData.map((data: any) => ({
+      day: data.day,
+      hour: data.hour,
+      formattedTime: data.formattedTime,
+      averageScore: data.z.toFixed(2),
+      dayIndex: data.y,
+      hourIndex: data.x
+    }))
+    
+    const filename = `reddit-analysis-${subreddit}-${timeRange}days-heatmap-${new Date().toISOString().split('T')[0]}.csv`
+    exportToCSV(heatmapCSVData, filename)
   }
 
   return (
@@ -181,8 +198,12 @@ export default function Home() {
                     <DropdownMenuItem onClick={handleExportJSON}>
                       Export as JSON
                     </DropdownMenuItem>
+                    <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={handleExportCSV}>
-                      Export as CSV
+                      Export Best Times (CSV)
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleExportHeatmapCSV}>
+                      Export Heatmap Data (CSV)
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
