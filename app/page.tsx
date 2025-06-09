@@ -6,9 +6,11 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Loader2 } from "lucide-react"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { Loader2, Download } from "lucide-react"
 import SubredditHeatmap from "@/components/subreddit-heatmap"
 import BestTimesList from "@/components/best-times-list"
+import { exportToJSON, exportToCSV } from "@/lib/utils"
 
 export default function Home() {
   const [subreddit, setSubreddit] = useState("")
@@ -89,6 +91,38 @@ export default function Home() {
     }
   }
 
+  const handleExportJSON = () => {
+    if (!results) return
+    
+    const exportData = {
+      subreddit,
+      timeRange: `${timeRange} days`,
+      exportDate: new Date().toISOString(),
+      bestTimes: results.bestTimes,
+      heatmapData: results.heatmapData,
+      insights: insight
+    }
+    
+    const filename = `reddit-analysis-${subreddit}-${timeRange}days-${new Date().toISOString().split('T')[0]}.json`
+    exportToJSON(exportData, filename)
+  }
+
+  const handleExportCSV = () => {
+    if (!results) return
+    
+    // Export best times as CSV
+    const bestTimesData = results.bestTimes.map((time: any, index: number) => ({
+      rank: index + 1,
+      day: time.day,
+      hour: time.hour,
+      formattedTime: time.formattedTime,
+      averageScore: time.score.toFixed(2)
+    }))
+    
+    const filename = `reddit-analysis-${subreddit}-${timeRange}days-${new Date().toISOString().split('T')[0]}.csv`
+    exportToCSV(bestTimesData, filename)
+  }
+
   return (
     <main className="container mx-auto py-10 px-4">
       <Card className="max-w-3xl mx-auto">
@@ -134,6 +168,25 @@ export default function Home() {
 
           {results && !loading && (
             <div className="mt-8 space-y-8">
+              <div className="flex justify-between items-center">
+                <h2 className="text-2xl font-semibold">Analysis Results</h2>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      <Download className="h-4 w-4 mr-2" />
+                      Export Results
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={handleExportJSON}>
+                      Export as JSON
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleExportCSV}>
+                      Export as CSV
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
               <BestTimesList bestTimes={results.bestTimes} />
               <SubredditHeatmap heatmapData={results.heatmapData} />
               {insight && (
