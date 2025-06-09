@@ -11,6 +11,7 @@ import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { Loader2, HelpCircle } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { Progress } from "@/components/ui/progress"
 import SubredditHeatmap from "@/components/subreddit-heatmap"
 import BestTimesList from "@/components/best-times-list"
 import BulkResults from "@/components/bulk-results"
@@ -21,6 +22,7 @@ export default function Home() {
   const [bulkInput, setBulkInput] = useState("")
   const [timeRange, setTimeRange] = useState("30")
   const [loading, setLoading] = useState(false)
+  const [bulkProgress, setBulkProgress] = useState<{ current: number; total: number } | null>(null)
   const [results, setResults] = useState<any>(null)
   const [bulkResults, setBulkResults] = useState<any>(null)
   const [error, setError] = useState<string | null>(null)
@@ -45,6 +47,7 @@ export default function Home() {
     setInsight("")
     setResults(null)
     setBulkResults(null)
+    setBulkProgress(null)
 
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 25000) // 25s timeout
@@ -126,12 +129,24 @@ export default function Home() {
     setError(null)
     setResults(null)
     setBulkResults(null)
+    setBulkProgress(null)
 
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 60000) // 60s timeout for bulk
 
     try {
       console.log("🔍 Starting bulk analysis for subreddits:", subreddits, "over", timeRange, "days")
+
+      // Initialize progress and simulate updates
+      setBulkProgress({ current: 0, total: subreddits.length })
+      
+      const progressInterval = setInterval(() => {
+        setBulkProgress(prev => {
+          if (!prev) return null
+          const newCurrent = Math.min(prev.current + 1, prev.total - 1)
+          return { current: newCurrent, total: prev.total }
+        })
+      }, 1000)
 
       const response = await fetch("/api/bulk-analyze", {
         method: "POST",
@@ -144,6 +159,9 @@ export default function Home() {
         }),
         signal: controller.signal,
       })
+
+      clearInterval(progressInterval)
+      setBulkProgress({ current: subreddits.length, total: subreddits.length })
 
       if (!response.ok) {
         const text = await response.text()
@@ -166,6 +184,7 @@ export default function Home() {
     } finally {
       clearTimeout(timeout)
       setLoading(false)
+      setBulkProgress(null)
     }
   }
 
@@ -249,6 +268,21 @@ export default function Home() {
             {error && (
               <div className="mt-4 p-4 bg-destructive/10 text-destructive rounded-md">
                 {error}
+              </div>
+            )}
+
+            {/* Bulk Progress */}
+            {loading && isBulkMode && bulkProgress && (
+              <div className="mt-4 p-4 bg-muted/50 rounded-lg">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium">
+                    Analyzing subreddits ({bulkProgress.current} of {bulkProgress.total})
+                  </span>
+                  <span className="text-sm text-muted-foreground">
+                    {Math.round((bulkProgress.current / bulkProgress.total) * 100)}%
+                  </span>
+                </div>
+                <Progress value={(bulkProgress.current / bulkProgress.total) * 100} className="w-full" />
               </div>
             )}
 

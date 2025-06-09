@@ -82,9 +82,9 @@ export function parseSubreddits(input: string): string[] {
 
   // Remove common prefixes
   const cleaned = input
-    .replace(/r\//g, '') // Remove r/ prefix
+    .replace(/reddit\.com\/r\//g, '') // Remove full reddit URLs first
     .replace(/\/r\//g, '') // Remove /r/ prefix
-    .replace(/reddit\.com\/r\//g, '') // Remove full reddit URLs
+    .replace(/r\//g, '') // Remove r/ prefix
 
   // Split by various delimiters and clean
   const subreddits = cleaned
