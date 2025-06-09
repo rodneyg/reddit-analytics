@@ -3,7 +3,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Chart, ChartTooltip, ChartTooltipContent, ChartTooltipItem } from "@/components/ui/chart"
 import { ScatterChart, Scatter, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts"
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { getUserTimezone, convertUtcToLocal, formatTimeWithTimezone, getTimezoneAbbreviation } from "@/lib/utils"
 
 interface HeatmapDataPoint {
   x: number // hour (0-23)
@@ -22,6 +23,15 @@ const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
 
 export default function SubredditHeatmap({ heatmapData }: SubredditHeatmapProps) {
   const [activeTooltip, setActiveTooltip] = useState<HeatmapDataPoint | null>(null)
+  const [userTimezone, setUserTimezone] = useState<string>('UTC')
+  const [timezoneAbbr, setTimezoneAbbr] = useState<string>('UTC')
+
+  useEffect(() => {
+    const timezone = getUserTimezone()
+    const abbr = getTimezoneAbbreviation(timezone)
+    setUserTimezone(timezone)
+    setTimezoneAbbr(abbr)
+  }, [])
 
   // Return null if no data is provided
   if (!heatmapData || heatmapData.length === 0) {
@@ -37,6 +47,18 @@ export default function SubredditHeatmap({ heatmapData }: SubredditHeatmapProps)
   const getColor = (score: number) => {
     const normalizedScore = maxScore === minScore ? 0.5 : (score - minScore) / (maxScore - minScore)
     return `rgb(${Math.round(220 - normalizedScore * 170)}, ${Math.round(240 - normalizedScore * 100)}, ${Math.round(255 - normalizedScore * 50)})`
+  }
+
+  const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+
+  const formatTooltipTime = (data: HeatmapDataPoint) => {
+    // Convert UTC time to local time
+    const localTime = convertUtcToLocal(data.y, data.x, userTimezone)
+    const localDay = dayNames[localTime.day]
+    const localFormatted = formatTimeWithTimezone(localDay, localTime.hour, userTimezone, false)
+    const utcFormatted = formatTimeWithTimezone(data.day, data.hour, 'UTC', false)
+    
+    return `${utcFormatted} UTC (${localFormatted} ${timezoneAbbr})`
   }
 
   return (
@@ -74,7 +96,7 @@ export default function SubredditHeatmap({ heatmapData }: SubredditHeatmapProps)
                     return (
                       <ChartTooltip>
                         <ChartTooltipContent>
-                          <ChartTooltipItem label="Time" value={data.formattedTime} />
+                          <ChartTooltipItem label="Time" value={formatTooltipTime(data)} />
                           <ChartTooltipItem label="Avg. Score" value={data.z.toFixed(1)} />
                         </ChartTooltipContent>
                       </ChartTooltip>
@@ -99,6 +121,9 @@ export default function SubredditHeatmap({ heatmapData }: SubredditHeatmapProps)
               </Scatter>
             </ScatterChart>
           </ResponsiveContainer>
+        </div>
+        <div className="mt-2 text-sm text-muted-foreground">
+          Times shown in UTC. Hover over points to see your local time ({timezoneAbbr}).
         </div>
       </CardContent>
     </Card>
