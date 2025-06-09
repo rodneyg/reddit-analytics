@@ -74,6 +74,29 @@ export function formatTimeWithTimezone(day: string, hour: number, timezone: stri
   return timeStr
 }
 
+// Utility to parse bulk subreddit input from various formats
+export function parseSubreddits(input: string): string[] {
+  if (!input.trim()) {
+    return []
+  }
+
+  // Remove common prefixes
+  const cleaned = input
+    .replace(/reddit\.com\/r\//g, '') // Remove full reddit URLs first
+    .replace(/\/r\//g, '') // Remove /r/ prefix
+    .replace(/r\//g, '') // Remove r/ prefix
+
+  // Split by various delimiters and clean
+  const subreddits = cleaned
+    .split(/[,\n\r\-•·*\s]+/) // Split by commas, newlines, dashes, bullets, asterisks, spaces
+    .map(s => s.trim())
+    .filter(s => s.length > 0 && s !== '-' && s !== '•' && s !== '*') // Remove empty strings and delimiter artifacts
+    .map(s => s.toLowerCase())
+
+  // Remove duplicates
+  return [...new Set(subreddits)]
+}
+
 // Export utilities
 export function downloadFile(content: string, filename: string, mimeType: string) {
   const blob = new Blob([content], { type: mimeType })
