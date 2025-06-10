@@ -2,9 +2,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
-import { CheckCircle, XCircle, AlertCircle } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { CheckCircle, XCircle, AlertCircle, Camera } from "lucide-react"
 import BestTimesList from "./best-times-list"
 import SubredditHeatmap from "./subreddit-heatmap"
+import { captureScreenshot } from "@/lib/utils"
 
 interface BulkResult {
   subreddit: string
@@ -21,17 +23,39 @@ export default function BulkResults({ results, timeRange }: BulkResultsProps) {
   const successCount = results.filter(r => r.data && !r.error).length
   const errorCount = results.filter(r => r.error).length
 
+  const handleSaveScreenshot = async () => {
+    try {
+      const filename = `reddit-bulk-analysis-${timeRange}days-${new Date().toISOString().split('T')[0]}.png`
+      await captureScreenshot('bulk-analysis-results', filename)
+    } catch (error) {
+      console.error('Failed to save screenshot:', error)
+    }
+  }
+
   return (
-    <div className="space-y-6">
+    <div id="bulk-analysis-results" className="space-y-6">
       {/* Summary */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            Bulk Analysis Results
-            <Badge variant="outline" className="ml-2">
-              {results.length} subreddit{results.length > 1 ? 's' : ''}
-            </Badge>
-          </CardTitle>
+          <div className="flex justify-between items-start">
+            <div className="flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2">
+                Bulk Analysis Results
+                <Badge variant="outline" className="ml-2">
+                  {results.length} subreddit{results.length > 1 ? 's' : ''}
+                </Badge>
+              </CardTitle>
+            </div>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={handleSaveScreenshot}
+              className="flex items-center gap-2"
+            >
+              <Camera className="h-4 w-4" />
+              Save Screenshot
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="flex gap-4 text-sm">
