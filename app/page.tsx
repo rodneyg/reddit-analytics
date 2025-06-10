@@ -23,6 +23,7 @@ export default function Home() {
   const [bulkInput, setBulkInput] = useState("")
   const [timeRange, setTimeRange] = useState("30")
   const [loading, setLoading] = useState(false)
+  const [isRetrying, setIsRetrying] = useState(false)
   const [bulkProgress, setBulkProgress] = useState<{ current: number; total: number } | null>(null)
   const [results, setResults] = useState<any>(null)
   const [bulkResults, setBulkResults] = useState<any>(null)
@@ -40,7 +41,7 @@ export default function Home() {
     }
   }
 
-  const handleSingleSubmit = async () => {
+  const handleSingleSubmit = async (isRetry = false) => {
     if (!subreddit) return
 
     setLoading(true)
@@ -49,12 +50,13 @@ export default function Home() {
     setResults(null)
     setBulkResults(null)
     setBulkProgress(null)
+    setIsRetrying(false)
 
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 25000) // 25s timeout
 
     try {
-      console.log("🔍 Starting analysis for subreddit:", subreddit, "over", timeRange, "days")
+      console.log(`🔍 ${isRetry ? 'Retrying' : 'Starting'} analysis for subreddit:`, subreddit, "over", timeRange, "days")
 
       const response = await fetch(`/api/analyze?subreddit=${subreddit}&days=${timeRange}`, {
         signal: controller.signal,
@@ -100,13 +102,31 @@ export default function Home() {
       console.log("🧠 Insight generated:", aiContent)
       setInsight(aiContent || "No insights returned from AI.")
     } catch (err: any) {
+      const isServerError = err.name === "AbortError" || (err.message && err.message.includes("Error 500"))
+      
+      if (isServerError && !isRetry) {
+        console.log("🔄 Server may be cold starting, retrying in 3 seconds...")
+        setError("Server is starting up, retrying automatically...")
+        setIsRetrying(true)
+        clearTimeout(timeout)
+        
+        setTimeout(async () => {
+          setIsRetrying(false)
+          await handleSingleSubmit(true)
+        }, 3000)
+        return
+      }
+      
       if (err.name === "AbortError") {
         console.error("⏱️ Request timed out.")
-        setError("Server took too long to respond. Try again in a few seconds.")
+        setError("Server took too long to respond. Please try again.")
       } else {
         console.error("❗ Error analyzing subreddit:", err)
         setError(err?.message || "Failed to analyze subreddit")
       }
+      
+      clearTimeout(timeout)
+      setLoading(false)
     } finally {
       clearTimeout(timeout)
       setLoading(false)
@@ -162,7 +182,7 @@ export default function Home() {
     exportToCSV(heatmapCSVData, filename)
   }
 
-  const handleBulkSubmit = async () => {
+  const handleBulkSubmit = async (isRetry = false) => {
     const subreddits = parseSubreddits(bulkInput)
     
     if (subreddits.length === 0) {
@@ -180,12 +200,13 @@ export default function Home() {
     setResults(null)
     setBulkResults(null)
     setBulkProgress(null)
+    setIsRetrying(false)
 
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 60000) // 60s timeout for bulk
 
     try {
-      console.log("🔍 Starting bulk analysis for subreddits:", subreddits, "over", timeRange, "days")
+      console.log(`🔍 ${isRetry ? 'Retrying' : 'Starting'} bulk analysis for subreddits:`, subreddits, "over", timeRange, "days")
 
       // Initialize progress and simulate updates
       setBulkProgress({ current: 0, total: subreddits.length })
@@ -224,15 +245,35 @@ export default function Home() {
 
       setBulkResults(data.results)
     } catch (err: any) {
+      const isServerError = err.name === "AbortError" || (err.message && err.message.includes("Error 500"))
+      
+      if (isServerError && !isRetry) {
+        console.log("🔄 Server may be cold starting, retrying in 3 seconds...")
+        setError("Server is starting up, retrying automatically...")
+        setIsRetrying(true)
+        clearTimeout(timeout)
+        setBulkProgress(null)
+        
+        setTimeout(async () => {
+          setIsRetrying(false)
+          await handleBulkSubmit(true)
+        }, 3000)
+        return
+      }
+      
       if (err.name === "AbortError") {
         console.error("⏱️ Request timed out.")
-        setError("Server took too long to respond. Try again in a few seconds.")
+        setError("Server took too long to respond. Please try again.")
       } else {
         console.error("❗ Error analyzing subreddits:", err)
         setError(err?.message || "Failed to analyze subreddits")
       }
-    } finally {
+      
       clearTimeout(timeout)
+      setLoading(false)
+      setBulkProgress(null)
+    } finally {
+      clearTimeout(timeout) 
       setLoading(false)
       setBulkProgress(null)
     }
@@ -306,7 +347,7 @@ export default function Home() {
                   {loading ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      {isBulkMode ? "Analyzing..." : "Analyzing"}
+                      {isRetrying ? "Retrying..." : (isBulkMode ? "Analyzing..." : "Analyzing")}
                     </>
                   ) : (
                     isBulkMode ? "Analyze All" : "Analyze"
