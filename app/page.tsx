@@ -102,7 +102,7 @@ export default function Home() {
       console.log("🧠 Insight generated:", aiContent)
       setInsight(aiContent || "No insights returned from AI.")
     } catch (err: any) {
-      const isServerError = err.name === "AbortError" || (err.message && err.message.includes("Error 500"))
+      const isServerError = err.name === "AbortError" || (err.message && (err.message.includes("Error 500") || err.message.includes("Error 504")))
       
       if (isServerError && !isRetry) {
         console.log("🔄 Server may be cold starting, retrying in 3 seconds...")
@@ -245,7 +245,7 @@ export default function Home() {
 
       setBulkResults(data.results)
     } catch (err: any) {
-      const isServerError = err.name === "AbortError" || (err.message && err.message.includes("Error 500"))
+      const isServerError = err.name === "AbortError" || (err.message && (err.message.includes("Error 500") || err.message.includes("Error 504")))
       
       if (isServerError && !isRetry) {
         console.log("🔄 Server may be cold starting, retrying in 3 seconds...")
