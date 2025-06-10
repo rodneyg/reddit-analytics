@@ -10,13 +10,13 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
-import { Loader2, Download, HelpCircle } from "lucide-react"
+import { Loader2, Download, HelpCircle, Camera } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Progress } from "@/components/ui/progress"
 import SubredditHeatmap from "@/components/subreddit-heatmap"
 import BestTimesList from "@/components/best-times-list"
 import BulkResults from "@/components/bulk-results"
-import { parseSubreddits, exportToJSON, exportToCSV } from "@/lib/utils"
+import { parseSubreddits, exportToJSON, exportToCSV, captureScreenshot } from "@/lib/utils"
 
 export default function Home() {
   const [subreddit, setSubreddit] = useState("")
@@ -160,6 +160,18 @@ export default function Home() {
     
     const filename = `reddit-analysis-${subreddit}-${timeRange}days-heatmap-${new Date().toISOString().split('T')[0]}.csv`
     exportToCSV(heatmapCSVData, filename)
+  }
+
+  const handleSaveScreenshot = async () => {
+    if (!results) return
+    
+    try {
+      const filename = `reddit-analysis-${subreddit}-${timeRange}days-${new Date().toISOString().split('T')[0]}.png`
+      await captureScreenshot('analysis-results', filename)
+    } catch (error) {
+      console.error('Failed to save screenshot:', error)
+      // You could add a toast notification here if available
+    }
   }
 
   const handleBulkSubmit = async () => {
@@ -338,7 +350,7 @@ export default function Home() {
 
             {/* Single Results */}
             {results && !loading && !isBulkMode && (
-              <div className="mt-8 space-y-8">
+              <div id="analysis-results" className="mt-8 space-y-8">
                 <div className="flex justify-between items-center">
                   <h2 className="text-2xl font-semibold">Analysis Results</h2>
                   <DropdownMenu>
@@ -349,6 +361,11 @@ export default function Home() {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={handleSaveScreenshot}>
+                        <Camera className="h-4 w-4 mr-2" />
+                        Save Screenshot
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
                       <DropdownMenuItem onClick={handleExportJSON}>
                         Export as JSON
                       </DropdownMenuItem>

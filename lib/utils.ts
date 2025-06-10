@@ -135,3 +135,39 @@ export function exportToCSV(data: any[], filename: string) {
   
   downloadFile(csvContent, filename, 'text/csv')
 }
+
+export async function captureScreenshot(elementId: string, filename: string) {
+  try {
+    const html2canvas = await import('html2canvas')
+    const element = document.getElementById(elementId)
+    
+    if (!element) {
+      throw new Error(`Element with id "${elementId}" not found`)
+    }
+    
+    const canvas = await html2canvas.default(element, {
+      backgroundColor: '#ffffff',
+      scale: 2, // Higher quality
+      logging: false,
+      useCORS: true,
+      allowTaint: true,
+    })
+    
+    // Convert canvas to blob and download
+    canvas.toBlob((blob) => {
+      if (blob) {
+        const url = URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.href = url
+        link.download = filename
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        URL.revokeObjectURL(url)
+      }
+    }, 'image/png')
+  } catch (error) {
+    console.error('Error capturing screenshot:', error)
+    throw error
+  }
+}
