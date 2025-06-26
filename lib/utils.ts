@@ -35,8 +35,8 @@ export function convertUtcToLocal(day: number, hour: number, timezone: string): 
     const referenceSunday = new Date('2024-01-07T00:00:00Z')
     const utcDate = new Date(referenceSunday.getTime() + (day * 24 * 60 * 60 * 1000) + (hour * 60 * 60 * 1000))
     
-    // Get the local time in the target timezone
-    const localTimeString = utcDate.toLocaleString('en-CA', { 
+    // Use formatToParts for reliable parsing
+    const localDateParts = new Intl.DateTimeFormat('en-CA', {
       timeZone: timezone,
       year: 'numeric',
       month: '2-digit',
@@ -45,19 +45,49 @@ export function convertUtcToLocal(day: number, hour: number, timezone: string): 
       minute: '2-digit',
       second: '2-digit',
       hour12: false
-    })
+    }).formatToParts(utcDate)
     
-    // Parse the local time string to get a proper Date object
-    const localDate = new Date(localTimeString + 'Z') // Add Z to treat as UTC for parsing
+    // Extract parts safely
+    const year = localDateParts.find(p => p.type === 'year')?.value
+    const month = localDateParts.find(p => p.type === 'month')?.value
+    const dayPart = localDateParts.find(p => p.type === 'day')?.value
+    const hourPart = localDateParts.find(p => p.type === 'hour')?.value
+    const minute = localDateParts.find(p => p.type === 'minute')?.value || '00'
+    const second = localDateParts.find(p => p.type === 'second')?.value || '00'
+    
+    // Ensure all parts are available
+    if (!year || !month || !dayPart || !hourPart) {
+      throw new Error('Failed to extract date parts')
+    }
+    
+    // Create ISO string and parse
+    const isoString = `${year}-${month}-${dayPart}T${hourPart}:${minute}:${second}.000Z`
+    const localDate = new Date(isoString)
+    
+    // Validate the parsed date
+    if (isNaN(localDate.getTime())) {
+      throw new Error('Invalid date created from parts')
+    }
+    
+    const resultDay = localDate.getUTCDay()
+    const resultHour = localDate.getUTCHours()
+    
+    // Validate results are within expected ranges
+    if (resultDay < 0 || resultDay > 6 || resultHour < 0 || resultHour > 23) {
+      throw new Error('Invalid day or hour result')
+    }
     
     return {
-      day: localDate.getUTCDay(),
-      hour: localDate.getUTCHours()
+      day: resultDay,
+      hour: resultHour
     }
   } catch (error) {
     console.warn('Timezone conversion failed, falling back to UTC:', error)
-    // Fallback to UTC if conversion fails
-    return { day, hour }
+    // Fallback to UTC if conversion fails - ensure valid values
+    return { 
+      day: Math.max(0, Math.min(6, day)), 
+      hour: Math.max(0, Math.min(23, hour)) 
+    }
   }
 }
 
