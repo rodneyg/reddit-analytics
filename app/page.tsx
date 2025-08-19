@@ -1,7 +1,8 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
+import { useState, useRef } from "react"
+import html2canvas from "html2canvas"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -30,6 +31,9 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null)
   const [insight, setInsight] = useState<string>("")
   const [isBulkMode, setIsBulkMode] = useState(false)
+
+  // Ref for the results section to capture in screenshot
+  const resultsRef = useRef<HTMLDivElement>(null)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -180,6 +184,38 @@ export default function Home() {
     
     const filename = `reddit-analysis-${subreddit}-${timeRange}days-heatmap-${new Date().toISOString().split('T')[0]}.csv`
     exportToCSV(heatmapCSVData, filename)
+  }
+
+  const handleExportScreenshot = async () => {
+    if (!results || !resultsRef.current) return
+
+    try {
+      const canvas = await html2canvas(resultsRef.current, {
+        backgroundColor: '#ffffff',
+        scale: 2, // Higher resolution
+        useCORS: true,
+        allowTaint: true,
+        height: resultsRef.current.scrollHeight,
+        width: resultsRef.current.scrollWidth
+      })
+
+      // Convert canvas to blob and download
+      canvas.toBlob((blob) => {
+        if (blob) {
+          const url = URL.createObjectURL(blob)
+          const link = document.createElement('a')
+          link.href = url
+          link.download = `reddit-analysis-${subreddit}-${timeRange}days-screenshot-${new Date().toISOString().split('T')[0]}.png`
+          document.body.appendChild(link)
+          link.click()
+          document.body.removeChild(link)
+          URL.revokeObjectURL(url)
+        }
+      }, 'image/png')
+    } catch (error) {
+      console.error('Error capturing screenshot:', error)
+      // Could add user notification here if needed
+    }
   }
 
   const handleBulkSubmit = async (isRetry = false) => {
@@ -379,7 +415,7 @@ export default function Home() {
 
             {/* Single Results */}
             {results && !loading && !isBulkMode && (
-              <div className="mt-8 space-y-8">
+              <div ref={resultsRef} className="mt-8 space-y-8">
                 <div className="flex justify-between items-center">
                   <h2 className="text-2xl font-semibold">Analysis Results</h2>
                   <DropdownMenu>
@@ -399,6 +435,10 @@ export default function Home() {
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={handleExportHeatmapCSV}>
                         Export Heatmap Data (CSV)
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={handleExportScreenshot}>
+                        Save Screenshot (PNG)
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
