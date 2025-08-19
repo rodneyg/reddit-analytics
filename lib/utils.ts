@@ -165,3 +165,24 @@ export function exportToCSV(data: any[], filename: string) {
   
   downloadFile(csvContent, filename, 'text/csv')
 }
+
+// Format time range for display
+export function formatTimeRange(days: string): string {
+  const dayCount = parseInt(days)
+  
+  if (dayCount === 1) {
+    return "past 24 hours"
+  } else if (dayCount < 7) {
+    return `past ${dayCount} days`
+  } else if (dayCount === 7) {
+    return "past week"
+  } else if (dayCount === 14) {
+    return "past 2 weeks"
+  } else if (dayCount === 30) {
+    return "past month"
+  } else if (dayCount === 90) {
+    return "past 3 months"
+  } else {
+    return `past ${dayCount} days`
+  }
+}
