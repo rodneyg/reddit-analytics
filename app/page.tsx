@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -10,12 +10,13 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
-import { Loader2, Download, HelpCircle } from "lucide-react"
+import { Loader2, Download, HelpCircle, Keyboard } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Progress } from "@/components/ui/progress"
 import SubredditHeatmap from "@/components/subreddit-heatmap"
 import BestTimesList from "@/components/best-times-list"
 import BulkResults from "@/components/bulk-results"
+import { SubredditAutocomplete } from "@/components/subreddit-autocomplete"
 import { AnalysisResultsSkeleton } from "@/components/loading-skeletons"
 import { parseSubreddits, exportToJSON, exportToCSV, formatTimeRange } from "@/lib/utils"
 
@@ -31,6 +32,45 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null)
   const [insight, setInsight] = useState<string>("")
   const [isBulkMode, setIsBulkMode] = useState(false)
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ctrl/Cmd + Enter to submit
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        e.preventDefault()
+        if (!loading && ((isBulkMode && bulkInput.trim()) || (!isBulkMode && subreddit.trim()))) {
+          if (isBulkMode) {
+            handleBulkSubmit()
+          } else {
+            handleSingleSubmit()
+          }
+        }
+      }
+      
+      // Escape to clear error or reset form
+      if (e.key === 'Escape') {
+        if (error) {
+          setError(null)
+        } else if (!loading) {
+          setSubreddit("")
+          setBulkInput("")
+          setResults(null)
+          setBulkResults(null)
+          setInsight("")
+        }
+      }
+      
+      // Alt + B to toggle bulk mode
+      if (e.altKey && e.key === 'b') {
+        e.preventDefault()
+        setIsBulkMode(prev => !prev)
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [loading, isBulkMode, subreddit, bulkInput, error])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -120,10 +160,16 @@ export default function Home() {
       
       if (err.name === "AbortError") {
         console.error("⏱️ Request timed out.")
-        setError("Server took too long to respond. Please try again.")
+        setError("Request timed out. The analysis is taking longer than expected. Please try again or use a shorter time range.")
+      } else if (err.message?.includes("Error 404")) {
+        setError("Subreddit not found. Please check the spelling and try again.")
+      } else if (err.message?.includes("Error 429")) {
+        setError("Too many requests. Please wait a moment before trying again.")
+      } else if (err.message?.includes("Error 500") || err.message?.includes("Error 502") || err.message?.includes("Error 503")) {
+        setError("Server is temporarily unavailable. Please try again in a few moments.")
       } else {
         console.error("❗ Error analyzing subreddit:", err)
-        setError(err?.message || "Failed to analyze subreddit")
+        setError(err?.message || "Failed to analyze subreddit. Please check your connection and try again.")
       }
       
       clearTimeout(timeout)
@@ -181,6 +227,67 @@ export default function Home() {
     
     const filename = `reddit-analysis-${subreddit}-${timeRange}days-heatmap-${new Date().toISOString().split('T')[0]}.csv`
     exportToCSV(heatmapCSVData, filename)
+  }
+
+  const handleExportInsights = () => {
+    if (!insight) return
+    
+    const insightData = {
+      subreddit,
+      timeRange: formatTimeRange(timeRange),
+      analyzedOn: new Date().toLocaleString(),
+      insights: insight
+    }
+    
+    const content = `Reddit Analysis Insights
+Subreddit: r/${subreddit}
+Time Range: ${formatTimeRange(timeRange)}
+Analyzed: ${new Date().toLocaleString()}
+
+${insight}`
+    
+    const blob = new Blob([content], { type: 'text/plain' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `reddit-insights-${subreddit}-${timeRange}days-${new Date().toISOString().split('T')[0]}.txt`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
+
+  const handleExportSummary = () => {
+    if (!results) return
+    
+    const topTimes = results.bestTimes.slice(0, 3).map((time: any, index: number) => 
+      `${index + 1}. ${time.formattedTime} (Score: ${time.score.toFixed(2)})`
+    ).join('\n')
+    
+    const summaryContent = `Reddit Analysis Summary
+Subreddit: r/${subreddit}
+Time Range: ${formatTimeRange(timeRange)}
+Analyzed: ${new Date().toLocaleString()}
+
+TOP POSTING TIMES:
+${topTimes}
+
+INSIGHTS:
+${insight || 'No insights available'}
+
+Data Points: ${results.heatmapData.length} time slots analyzed
+Best Overall Score: ${Math.max(...results.bestTimes.map((t: any) => t.score)).toFixed(2)}
+Generated by Reddit Post Time Analyzer`
+    
+    const blob = new Blob([summaryContent], { type: 'text/plain' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `reddit-summary-${subreddit}-${timeRange}days-${new Date().toISOString().split('T')[0]}.txt`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
   }
 
   const handleBulkSubmit = async (isRetry = false) => {
@@ -264,10 +371,12 @@ export default function Home() {
       
       if (err.name === "AbortError") {
         console.error("⏱️ Request timed out.")
-        setError("Server took too long to respond. Please try again.")
+        setError("Bulk analysis timed out. This can happen with large requests. Try reducing the number of subreddits or use a shorter time range.")
+      } else if (err.message?.includes("Maximum 10 subreddits")) {
+        setError("Too many subreddits. Please limit your request to 10 subreddits at most.")
       } else {
         console.error("❗ Error analyzing subreddits:", err)
-        setError(err?.message || "Failed to analyze subreddits")
+        setError(err?.message || "Failed to analyze subreddits. Please check your connection and try again.")
       }
       
       clearTimeout(timeout)
@@ -282,11 +391,27 @@ export default function Home() {
 
   return (
     <TooltipProvider>
-      <main className="container mx-auto py-10 px-4">
-        <Card className="max-w-3xl mx-auto">
+      <main className="container mx-auto py-6 px-4 max-w-6xl">
+        <Card className="w-full shadow-lg">
           <CardHeader>
-            <CardTitle className="text-2xl">Reddit Post Time Analyzer</CardTitle>
-            <CardDescription>Find the best time to post on your favorite subreddit{isBulkMode ? 's' : ''}</CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-2xl">Reddit Post Time Analyzer</CardTitle>
+                <CardDescription>Find the best time to post on your favorite subreddit{isBulkMode ? 's' : ''}</CardDescription>
+              </div>
+              <Tooltip>
+                <TooltipTrigger>
+                  <Keyboard className="h-5 w-5 text-muted-foreground" />
+                </TooltipTrigger>
+                <TooltipContent side="left" className="max-w-xs">
+                  <div className="space-y-1 text-xs">
+                    <div><kbd className="px-1 py-0.5 text-xs font-mono bg-muted rounded">Ctrl+Enter</kbd> Submit analysis</div>
+                    <div><kbd className="px-1 py-0.5 text-xs font-mono bg-muted rounded">Esc</kbd> Clear error or reset</div>
+                    <div><kbd className="px-1 py-0.5 text-xs font-mono bg-muted rounded">Alt+B</kbd> Toggle bulk mode</div>
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+            </div>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -327,21 +452,21 @@ export default function Home() {
                       rows={5}
                     />
                   ) : (
-                    <Input
-                      placeholder="Enter subreddit name (e.g. technology)"
+                    <SubredditAutocomplete
                       value={subreddit}
-                      onChange={(e) => setSubreddit(e.target.value)}
+                      onValueChange={setSubreddit}
+                      placeholder="Enter subreddit name (e.g. technology)"
                       className="w-full"
                     />
                   )}
                 </div>
                 <Tabs defaultValue="30" onValueChange={setTimeRange} className="w-full sm:w-auto">
-                  <TabsList className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 w-full">
-                    <TabsTrigger value="1">1 day</TabsTrigger>
-                    <TabsTrigger value="3">3 days</TabsTrigger>
-                    <TabsTrigger value="7">7 days</TabsTrigger>
-                    <TabsTrigger value="30">30 days</TabsTrigger>
-                    <TabsTrigger value="90">90 days</TabsTrigger>
+                  <TabsList className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 w-full h-auto gap-1">
+                    <TabsTrigger value="1" className="text-xs sm:text-sm">1 day</TabsTrigger>
+                    <TabsTrigger value="3" className="text-xs sm:text-sm">3 days</TabsTrigger>
+                    <TabsTrigger value="7" className="text-xs sm:text-sm">7 days</TabsTrigger>
+                    <TabsTrigger value="30" className="text-xs sm:text-sm">30 days</TabsTrigger>
+                    <TabsTrigger value="90" className="text-xs sm:text-sm">90 days</TabsTrigger>
                   </TabsList>
                 </Tabs>
                 <Button 
@@ -362,7 +487,28 @@ export default function Home() {
 
             {error && (
               <div className="mt-4 p-4 bg-destructive/10 text-destructive rounded-md">
-                {error}
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1">
+                    <p className="font-medium">Analysis Failed</p>
+                    <p className="text-sm mt-1">{error}</p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setError(null)
+                      if (isBulkMode) {
+                        handleBulkSubmit(true)
+                      } else {
+                        handleSingleSubmit(true)
+                      }
+                    }}
+                    disabled={loading}
+                    className="shrink-0"
+                  >
+                    {loading ? "Retrying..." : "Retry"}
+                  </Button>
+                </div>
               </div>
             )}
 
@@ -402,17 +548,28 @@ export default function Home() {
                         Export Results
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={handleExportJSON}>
-                        Export as JSON
+                    <DropdownMenuContent align="end" className="w-56">
+                      <DropdownMenuItem onClick={handleExportSummary}>
+                        📄 Export Summary Report
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={handleExportJSON}>
+                        📊 Export Full Data (JSON)
+                      </DropdownMenuItem>
                       <DropdownMenuItem onClick={handleExportCSV}>
-                        Export Best Times (CSV)
+                        📈 Export Best Times (CSV)
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={handleExportHeatmapCSV}>
-                        Export Heatmap Data (CSV)
+                        🔥 Export Heatmap Data (CSV)
                       </DropdownMenuItem>
+                      {insight && (
+                        <>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={handleExportInsights}>
+                            💡 Export Insights (TXT)
+                          </DropdownMenuItem>
+                        </>
+                      )}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
