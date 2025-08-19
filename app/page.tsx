@@ -16,7 +16,8 @@ import { Progress } from "@/components/ui/progress"
 import SubredditHeatmap from "@/components/subreddit-heatmap"
 import BestTimesList from "@/components/best-times-list"
 import BulkResults from "@/components/bulk-results"
-import { parseSubreddits, exportToJSON, exportToCSV } from "@/lib/utils"
+import { AnalysisResultsSkeleton } from "@/components/loading-skeletons"
+import { parseSubreddits, exportToJSON, exportToCSV, formatTimeRange } from "@/lib/utils"
 
 export default function Home() {
   const [subreddit, setSubreddit] = useState("")
@@ -335,9 +336,12 @@ export default function Home() {
                   )}
                 </div>
                 <Tabs defaultValue="30" onValueChange={setTimeRange} className="w-full sm:w-auto">
-                  <TabsList>
-                    <TabsTrigger value="7">Past 7 days</TabsTrigger>
-                    <TabsTrigger value="30">Past 30 days</TabsTrigger>
+                  <TabsList className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 w-full">
+                    <TabsTrigger value="1">1 day</TabsTrigger>
+                    <TabsTrigger value="3">3 days</TabsTrigger>
+                    <TabsTrigger value="7">7 days</TabsTrigger>
+                    <TabsTrigger value="30">30 days</TabsTrigger>
+                    <TabsTrigger value="90">90 days</TabsTrigger>
                   </TabsList>
                 </Tabs>
                 <Button 
@@ -377,11 +381,20 @@ export default function Home() {
               </div>
             )}
 
+            {/* Single Analysis Loading */}
+            {loading && !isBulkMode && (
+              <AnalysisResultsSkeleton />
+            )}
+
             {/* Single Results */}
             {results && !loading && !isBulkMode && (
               <div className="mt-8 space-y-8">
+                <div className="text-center">
+                  <h2 className="text-2xl font-bold">r/{subreddit}</h2>
+                  <p className="text-muted-foreground">Analysis for {formatTimeRange(timeRange)}</p>
+                </div>
                 <div className="flex justify-between items-center">
-                  <h2 className="text-2xl font-semibold">Analysis Results</h2>
+                  <h3 className="text-lg font-semibold">Results</h3>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="outline" size="sm">
