@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Switch } from "@/components/ui/switch"
@@ -92,7 +93,7 @@ export default function Home() {
     }
   }
 
-  const handleSingleSubmit = async (isRetry = false) => {
+  const handleSingleSubmit = async (retryAttempt = 0) => {
     if (!subreddit) return
 
     setLoading(true)
@@ -101,13 +102,13 @@ export default function Home() {
     setResults(null)
     setBulkResults(null)
     setBulkProgress(null)
-    setIsRetrying(false)
+    setIsRetrying(retryAttempt > 0)
 
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 25000) // 25s timeout
 
     try {
-      console.log(`🔍 ${isRetry ? 'Retrying' : 'Starting'} analysis for subreddit:`, subreddit, "over", timeRange, "days")
+      console.log(`🔍 ${retryAttempt > 0 ? 'Retrying' : 'Starting'} analysis for subreddit:`, subreddit, "over", timeRange, "days")
 
       const response = await fetch(`/api/analyze?subreddit=${subreddit}&days=${timeRange}`, {
         signal: controller.signal,
@@ -124,9 +125,67 @@ export default function Home() {
 
       setResults(data)
 
-      const prompt = `Analyze Reddit posting patterns for r/${subreddit} over the past ${timeRange} days. Top times: ${data.bestTimes
-        .map((t: any) => `${t.formattedTime} (${t.score.toFixed(2)})`) 
-        .join(", ")}`
+      // Create comprehensive data-driven insights
+      const topTimes = data.bestTimes.slice(0, 5)
+      const worstTimes = data.bestTimes.slice(-3)
+      const avgScore = data.bestTimes.reduce((sum: number, time: any) => sum + time.score, 0) / data.bestTimes.length
+      const bestScore = Math.max(...data.bestTimes.map((t: any) => t.score))
+      const worstScore = Math.min(...data.bestTimes.map((t: any) => t.score))
+      const scoreRange = bestScore - worstScore
+      
+      // Analyze patterns by day and hour
+      const dayStats = data.heatmapData.reduce((acc: any, item: any) => {
+        if (!acc[item.day]) acc[item.day] = { total: 0, count: 0 }
+        acc[item.day].total += item.z
+        acc[item.day].count += 1
+        return acc
+      }, {})
+      
+      const hourStats = data.heatmapData.reduce((acc: any, item: any) => {
+        if (!acc[item.hour]) acc[item.hour] = { total: 0, count: 0 }
+        acc[item.hour].total += item.z
+        acc[item.hour].count += 1
+        return acc
+      }, {})
+      
+      const bestDays = Object.entries(dayStats)
+        .map(([day, stats]: [string, any]) => ({ day, avg: stats.total / stats.count }))
+        .sort((a, b) => b.avg - a.avg)
+        .slice(0, 3)
+        
+      const bestHours = Object.entries(hourStats)
+        .map(([hour, stats]: [string, any]) => ({ hour: parseInt(hour), avg: stats.total / stats.count }))
+        .sort((a, b) => b.avg - a.avg)
+        .slice(0, 3)
+
+      const prompt = `As a Reddit analytics expert, provide strategic posting insights for r/${subreddit} based on ${timeRange} days of data analysis.
+
+DATA SUMMARY:
+- Total time slots analyzed: ${data.heatmapData.length}
+- Best posting time: ${topTimes[0].formattedTime} (score: ${topTimes[0].score.toFixed(2)})
+- Average performance score: ${avgScore.toFixed(2)}
+- Performance range: ${worstScore.toFixed(2)} to ${bestScore.toFixed(2)} (range: ${scoreRange.toFixed(2)})
+
+TOP 5 BEST TIMES:
+${topTimes.map((t: any, i: number) => `${i+1}. ${t.formattedTime} - Score: ${t.score.toFixed(2)}`).join('\n')}
+
+WORST 3 TIMES TO AVOID:
+${worstTimes.map((t: any, i: number) => `${i+1}. ${t.formattedTime} - Score: ${t.score.toFixed(2)}`).join('\n')}
+
+BEST DAYS OF WEEK:
+${bestDays.map((d: any, i: number) => `${i+1}. ${d.day} - Avg: ${d.avg.toFixed(2)}`).join('\n')}
+
+BEST HOURS OF DAY:
+${bestHours.map((h: any, i: number) => `${i+1}. ${h.hour}:00 - Avg: ${h.avg.toFixed(2)}`).join('\n')}
+
+Provide actionable insights covering:
+1. Optimal posting strategy based on the data
+2. Patterns observed in day/time preferences
+3. Score distribution analysis and what it means
+4. Specific recommendations for maximizing engagement
+5. Times to avoid and why
+
+Keep insights practical, data-driven, and concise (3-4 paragraphs max).`
 
       const gptRes = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
@@ -173,18 +232,20 @@ export default function Home() {
         })
       }
     } catch (err: any) {
-      const isServerError = err.name === "AbortError" || (err.message && (err.message.includes("Error 500") || err.message.includes("Error 504")))
+      const maxRetries = 2
+      const isServerError = err.name === "AbortError" || (err.message && (err.message.includes("Error 500") || err.message.includes("Error 504") || err.message.includes("Error 502") || err.message.includes("Error 503")))
       
-      if (isServerError && !isRetry) {
-        console.log("🔄 Server may be cold starting, retrying in 3 seconds...")
-        setError("Server is starting up, retrying automatically...")
+      if (isServerError && retryAttempt < maxRetries) {
+        const delayTime = (retryAttempt + 1) * 5000 // 5s, 10s delays
+        console.log(`🔄 Server error, retrying in ${delayTime/1000} seconds... (attempt ${retryAttempt + 1}/${maxRetries})`)
+        setError(`Server is starting up, retrying automatically in ${delayTime/1000} seconds... (attempt ${retryAttempt + 1}/${maxRetries})`)
         setIsRetrying(true)
         clearTimeout(timeout)
         
         setTimeout(async () => {
           setIsRetrying(false)
-          await handleSingleSubmit(true)
-        }, 3000)
+          await handleSingleSubmit(retryAttempt + 1)
+        }, delayTime)
         return
       }
       
@@ -320,7 +381,7 @@ Generated by Reddit Post Time Analyzer`
     URL.revokeObjectURL(url)
   }
 
-  const handleBulkSubmit = async (isRetry = false) => {
+  const handleBulkSubmit = async (retryAttempt = 0) => {
     const subreddits = parseSubreddits(bulkInput)
     
     if (subreddits.length === 0) {
@@ -338,13 +399,13 @@ Generated by Reddit Post Time Analyzer`
     setResults(null)
     setBulkResults(null)
     setBulkProgress(null)
-    setIsRetrying(false)
+    setIsRetrying(retryAttempt > 0)
 
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 60000) // 60s timeout for bulk
 
     try {
-      console.log(`🔍 ${isRetry ? 'Retrying' : 'Starting'} bulk analysis for subreddits:`, subreddits, "over", timeRange, "days")
+      console.log(`🔍 ${retryAttempt > 0 ? 'Retrying' : 'Starting'} bulk analysis for subreddits:`, subreddits, "over", timeRange, "days")
 
       // Initialize progress and simulate updates
       setBulkProgress({ current: 0, total: subreddits.length })
@@ -383,19 +444,21 @@ Generated by Reddit Post Time Analyzer`
 
       setBulkResults(data.results)
     } catch (err: any) {
-      const isServerError = err.name === "AbortError" || (err.message && (err.message.includes("Error 500") || err.message.includes("Error 504")))
+      const maxRetries = 2
+      const isServerError = err.name === "AbortError" || (err.message && (err.message.includes("Error 500") || err.message.includes("Error 504") || err.message.includes("Error 502") || err.message.includes("Error 503")))
       
-      if (isServerError && !isRetry) {
-        console.log("🔄 Server may be cold starting, retrying in 3 seconds...")
-        setError("Server is starting up, retrying automatically...")
+      if (isServerError && retryAttempt < maxRetries) {
+        const delayTime = (retryAttempt + 1) * 5000 // 5s, 10s delays
+        console.log(`🔄 Server error, retrying bulk analysis in ${delayTime/1000} seconds... (attempt ${retryAttempt + 1}/${maxRetries})`)
+        setError(`Server is starting up, retrying automatically in ${delayTime/1000} seconds... (attempt ${retryAttempt + 1}/${maxRetries})`)
         setIsRetrying(true)
         clearTimeout(timeout)
         setBulkProgress(null)
         
         setTimeout(async () => {
           setIsRetrying(false)
-          await handleBulkSubmit(true)
-        }, 3000)
+          await handleBulkSubmit(retryAttempt + 1)
+        }, delayTime)
         return
       }
       
@@ -488,8 +551,14 @@ Generated by Reddit Post Time Analyzer`
                   <Label htmlFor="comparison-mode" className="flex items-center gap-2">
                     Comparison Mode
                     <Tooltip>
-                      <TooltipTrigger>
-                        <HelpCircle className="h-4 w-4 text-muted-foreground" />
+                      <TooltipTrigger asChild>
+                        <button 
+                          type="button"
+                          onClick={(e) => e.stopPropagation()}
+                          className="flex items-center"
+                        >
+                          <HelpCircle className="h-4 w-4 text-muted-foreground" />
+                        </button>
                       </TooltipTrigger>
                       <TooltipContent>
                         <p>Compare multiple subreddit analyses side-by-side:</p>
@@ -562,9 +631,9 @@ Generated by Reddit Post Time Analyzer`
                     onClick={() => {
                       setError(null)
                       if (isBulkMode) {
-                        handleBulkSubmit(true)
+                        handleBulkSubmit(0)
                       } else {
-                        handleSingleSubmit(true)
+                        handleSingleSubmit(0)
                       }
                     }}
                     disabled={loading}

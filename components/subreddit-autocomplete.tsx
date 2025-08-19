@@ -1,10 +1,10 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
+import { useState, useEffect, useRef } from "react"
+import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from "@/components/ui/command"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Button } from "@/components/ui/button"
-import { Check, ChevronsUpDown } from "lucide-react"
+import { Input } from "@/components/ui/input"
+import { Check } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { getSubredditSuggestions } from "@/lib/subreddit-suggestions"
 
@@ -17,52 +17,70 @@ interface SubredditAutocompleteProps {
 
 export function SubredditAutocomplete({ value, onValueChange, placeholder = "Enter subreddit name", className }: SubredditAutocompleteProps) {
   const [open, setOpen] = useState(false)
-  const [inputValue, setInputValue] = useState(value)
   const [suggestions, setSuggestions] = useState<string[]>([])
+  const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    setSuggestions(getSubredditSuggestions(inputValue, 8))
-  }, [inputValue])
-
-  useEffect(() => {
-    setInputValue(value)
+    setSuggestions(getSubredditSuggestions(value, 8))
   }, [value])
 
   const handleSelect = (selectedValue: string) => {
     onValueChange(selectedValue)
-    setInputValue(selectedValue)
     setOpen(false)
+    // Focus back to input after selection
+    setTimeout(() => {
+      inputRef.current?.focus()
+    }, 0)
   }
 
-  const handleInputChange = (newValue: string) => {
-    setInputValue(newValue)
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = e.target.value
     onValueChange(newValue)
-    if (newValue.length > 0 && !open) {
+    
+    // Show suggestions if there's input and suggestions exist
+    if (newValue.length > 0) {
+      setOpen(true)
+    } else {
+      setOpen(false)
+    }
+  }
+
+  const handleInputFocus = () => {
+    if (value.length > 0 && suggestions.length > 0) {
       setOpen(true)
     }
   }
 
+  const handleInputBlur = () => {
+    // Delay closing to allow click on suggestions
+    setTimeout(() => {
+      setOpen(false)
+    }, 200)
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      setOpen(false)
+    }
+  }
+
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <div className={cn("relative", className)}>
-          <Command className="rounded-lg border border-input">
-            <CommandInput
-              placeholder={placeholder}
-              value={inputValue}
-              onValueChange={handleInputChange}
-              onFocus={() => setOpen(true)}
-              className="border-0"
-            />
-          </Command>
-        </div>
-      </PopoverTrigger>
-      <PopoverContent className="w-full p-0" align="start" sideOffset={4}>
-        <Command>
-          <CommandList>
-            {suggestions.length === 0 && inputValue.length > 0 ? (
-              <CommandEmpty>No subreddits found.</CommandEmpty>
-            ) : (
+    <div className={cn("relative", className)}>
+      <Input
+        ref={inputRef}
+        placeholder={placeholder}
+        value={value}
+        onChange={handleInputChange}
+        onFocus={handleInputFocus}
+        onBlur={handleInputBlur}
+        onKeyDown={handleKeyDown}
+        className="w-full"
+      />
+      
+      {open && suggestions.length > 0 && (
+        <div className="absolute z-50 w-full mt-1 bg-popover border rounded-md shadow-md">
+          <Command>
+            <CommandList className="max-h-60 overflow-auto">
               <CommandGroup>
                 {suggestions.map((suggestion) => (
                   <CommandItem
@@ -84,10 +102,10 @@ export function SubredditAutocomplete({ value, onValueChange, placeholder = "Ent
                   </CommandItem>
                 ))}
               </CommandGroup>
-            )}
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
+            </CommandList>
+          </Command>
+        </div>
+      )}
+    </div>
   )
 }
