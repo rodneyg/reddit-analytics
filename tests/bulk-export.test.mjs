@@ -2,8 +2,8 @@ import assert from "node:assert/strict"
 import test from "node:test"
 import { getBestTimesRows, getHeatmapRows, getSuccessfulResults } from "../lib/bulk-export.ts"
 
-const time = { day: "Monday", hour: 9, formattedTime: "Monday 9AM UTC" }
-const bestTime = { ...time, score: 4.125 }
+const time = { day: "Monday", formattedTime: "Monday 9AM UTC" }
+const bestTime = { ...time, hour: 9, score: 4.125 }
 const heatmapPoint = { ...time, x: 9, y: 1, z: 2.5 }
 const results = [
   { subreddit: "reactjs", data: { bestTimes: [bestTime, bestTime], heatmapData: [heatmapPoint] } },
@@ -22,13 +22,13 @@ test("includes every successful subreddit with its original analysis data", () =
 test("labels CSV rows by subreddit and restarts best time ranks per subreddit", () => {
   const successful = getSuccessfulResults(results)
   assert.deepEqual(getBestTimesRows(successful), [
-    { subreddit: "reactjs", rank: 1, ...time, averageScore: "4.13" },
-    { subreddit: "reactjs", rank: 2, ...time, averageScore: "4.13" },
-    { subreddit: "typescript", rank: 1, ...time, averageScore: "4.13" },
+    { subreddit: "reactjs", rank: 1, ...time, hour: 9, averageScore: "4.13" },
+    { subreddit: "reactjs", rank: 2, ...time, hour: 9, averageScore: "4.13" },
+    { subreddit: "typescript", rank: 1, ...time, hour: 9, averageScore: "4.13" },
   ])
   assert.deepEqual(getHeatmapRows(successful), [
-    { subreddit: "reactjs", ...time, averageScore: "2.50", dayIndex: 1, hourIndex: 9 },
-    { subreddit: "typescript", ...time, averageScore: "2.50", dayIndex: 1, hourIndex: 9 },
+    { subreddit: "reactjs", ...time, hour: 9, averageScore: "2.50", dayIndex: 1, hourIndex: 9 },
+    { subreddit: "typescript", ...time, hour: 9, averageScore: "2.50", dayIndex: 1, hourIndex: 9 },
   ])
 })
 
