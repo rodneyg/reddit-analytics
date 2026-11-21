@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { analyzerDeadline, AnalyzerWakingError, fetchAnalysis } from "@/lib/analyzer-backend"
+import { analyzerDeadline, AnalyzerNoPostsError, AnalyzerWakingError, fetchAnalysis } from "@/lib/analyzer-backend"
 
 export const maxDuration = 60
 
@@ -31,6 +31,9 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(data)
   } catch (error) {
+    if (error instanceof AnalyzerNoPostsError) {
+      return NextResponse.json({ error: error.message }, { status: 404 })
+    }
     if (error instanceof AnalyzerWakingError) {
       return NextResponse.json({ error: error.message }, { status: 503 })
     }

@@ -119,7 +119,7 @@ export default function Home() {
       })
 
       if (!response.ok) {
-        if (response.status === 503 && response.headers.get("content-type")?.includes("application/json")) {
+        if ([404, 503].includes(response.status) && response.headers.get("content-type")?.includes("application/json")) {
           const { error } = await response.clone().json().catch(() => ({}))
           if (typeof error === "string" && error) {
             setError(error)
@@ -250,7 +250,7 @@ export default function Home() {
     // Export heatmap data as CSV
     const heatmapCSVData = results.heatmapData.map((data: any) => ({
       day: data.day,
-      hour: data.hour,
+      hour: data.x,
       formattedTime: data.formattedTime,
       averageScore: data.z.toFixed(2),
       dayIndex: data.y,
