@@ -1,5 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { getRedditAccessToken } from "@/lib/reddit"
+import { analyzerDeadline, AnalyzerWakingError, fetchAnalysis } from "@/lib/analyzer-backend"
+
+export const maxDuration = 60
 
 const CACHE_TTL = 24 * 60 * 60 * 1000
 const cache = new Map()
@@ -21,13 +23,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const response = await fetch(`https://reddit-analyzer-backend.onrender.com/analyze?subreddit=${subreddit}&days=${days}&limit=100`)
-
-    if (!response.ok) {
-      throw new Error(`Backend error: ${response.status}`)
-    }
-
-    const data = await response.json()
+    const data = await fetchAnalysis(subreddit, days, analyzerDeadline())
     cache.set(cacheKey, {
       timestamp: Date.now(),
       data,
@@ -35,6 +31,10 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(data)
   } catch (error) {
+    if (error instanceof AnalyzerWakingError) {
+      return NextResponse.json({ error: error.message }, { status: 503 })
+    }
+
     console.error("Error forwarding to backend:", error)
     return NextResponse.json({ error: "Failed to analyze subreddit" }, { status: 500 })
   }

@@ -1,3 +1,4 @@
+import { useRef } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -20,34 +21,35 @@ interface BulkResultsProps {
 }
 
 export default function BulkResults({ results, timeRange }: BulkResultsProps) {
+  const resultsRef = useRef<HTMLDivElement>(null)
   const successCount = results.filter(r => r.data && !r.error).length
   const errorCount = results.filter(r => r.error).length
 
   const handleSaveScreenshot = async () => {
+    if (!resultsRef.current) return
+
     try {
       const filename = `reddit-bulk-analysis-${timeRange}days-${new Date().toISOString().split('T')[0]}.png`
-      await captureScreenshot('bulk-analysis-results', filename)
+      await captureScreenshot(resultsRef.current, filename)
     } catch (error) {
       console.error('Failed to save screenshot:', error)
     }
   }
 
   return (
-    <div id="bulk-analysis-results" className="space-y-6">
+    <div ref={resultsRef} className="space-y-6">
       {/* Summary */}
       <Card>
         <CardHeader>
-          <div className="flex justify-between items-start">
-            <div className="flex items-center gap-2">
-              <CardTitle className="flex items-center gap-2">
-                Bulk Analysis Results
-                <Badge variant="outline" className="ml-2">
-                  {results.length} subreddit{results.length > 1 ? 's' : ''}
-                </Badge>
-              </CardTitle>
-            </div>
-            <Button 
-              variant="outline" 
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <CardTitle className="flex flex-wrap items-center gap-2">
+              Bulk Analysis Results
+              <Badge variant="outline">
+                {results.length} subreddit{results.length > 1 ? 's' : ''}
+              </Badge>
+            </CardTitle>
+            <Button
+              variant="outline"
               size="sm"
               onClick={handleSaveScreenshot}
               className="flex items-center gap-2"
