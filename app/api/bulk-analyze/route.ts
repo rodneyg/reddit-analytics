@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { analyzerDeadline, AnalyzerWakingError, fetchAnalysis } from "@/lib/analyzer-backend"
+import { analyzerDeadline, AnalyzerNoPostsError, AnalyzerWakingError, fetchAnalysis } from "@/lib/analyzer-backend"
 
 export const maxDuration = 60
 
@@ -34,7 +34,9 @@ async function analyzeSubreddit(subreddit: string, days: string, signal: AbortSi
   } catch (error) {
     if (error instanceof AnalyzerWakingError) throw error
 
-    console.error(`Error analyzing subreddit ${cleanSubreddit}:`, error)
+    if (!(error instanceof AnalyzerNoPostsError)) {
+      console.error(`Error analyzing subreddit ${cleanSubreddit}:`, error)
+    }
     return {
       subreddit: cleanSubreddit,
       error: error instanceof Error ? error.message : "Failed to analyze subreddit"

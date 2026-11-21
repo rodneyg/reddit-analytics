@@ -1,13 +1,12 @@
 interface PostingTime {
   day: string
-  hour: number
   formattedTime: string
 }
 
 export interface BulkResult {
   subreddit: string
   data?: {
-    bestTimes?: (PostingTime & { score: number })[]
+    bestTimes?: (PostingTime & { hour: number; score: number })[]
     heatmapData?: (PostingTime & { x: number; y: number; z: number })[]
   }
   error?: string
@@ -36,10 +35,10 @@ export function getBestTimesRows(results: SuccessfulResults) {
 
 export function getHeatmapRows(results: SuccessfulResults) {
   return results.flatMap(({ subreddit, heatmapData }) =>
-    (heatmapData ?? []).map(({ day, hour, formattedTime, x, y, z }) => ({
+    (heatmapData ?? []).map(({ day, formattedTime, x, y, z }) => ({
       subreddit,
       day,
-      hour,
+      hour: x,
       formattedTime,
       averageScore: z.toFixed(2),
       dayIndex: y,

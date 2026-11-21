@@ -11,7 +11,6 @@ interface HeatmapDataPoint {
   y: number // day (0-6)
   z: number // score
   day: string
-  hour: number
   formattedTime: string
 }
 
@@ -56,7 +55,7 @@ export default function SubredditHeatmap({ heatmapData }: SubredditHeatmapProps)
     const localTime = convertUtcToLocal(data.y, data.x, userTimezone)
     const localDay = dayNames[localTime.day]
     const localFormatted = formatTimeWithTimezone(localDay, localTime.hour, userTimezone, false)
-    const utcFormatted = formatTimeWithTimezone(data.day, data.hour, 'UTC', false)
+    const utcFormatted = formatTimeWithTimezone(data.day, data.x, 'UTC', false)
     
     return `${utcFormatted} UTC (${localFormatted} ${timezoneAbbr})`
   }
