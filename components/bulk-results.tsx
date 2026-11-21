@@ -45,7 +45,7 @@ export default function BulkResults({ results, timeRange }: BulkResultsProps) {
     }
   }
 
-  const handleSaveScreenshot = async () => {
+  const handleSaveImage = async () => {
     if (!resultsRef.current) return
 
     const date = new Date().toISOString().slice(0, 10)
@@ -67,7 +67,7 @@ export default function BulkResults({ results, timeRange }: BulkResultsProps) {
               {results.length} subreddit{results.length > 1 ? 's' : ''}
             </Badge>
           </CardTitle>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2" data-html2canvas-ignore>
             {successCount > 0 && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -95,9 +95,9 @@ export default function BulkResults({ results, timeRange }: BulkResultsProps) {
                 </DropdownMenuContent>
               </DropdownMenu>
             )}
-            <Button type="button" variant="outline" size="sm" onClick={handleSaveScreenshot}>
+            <Button type="button" variant="outline" size="sm" onClick={handleSaveImage}>
               <Camera aria-hidden="true" />
-              Save Screenshot
+              Save image
             </Button>
           </div>
         </CardHeader>
