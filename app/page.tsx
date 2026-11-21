@@ -2,7 +2,6 @@
 
 import type React from "react"
 import { useState, useEffect, useRef } from "react"
-import html2canvas from "html2canvas"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -21,7 +20,7 @@ import BulkResults from "@/components/bulk-results"
 import ComparisonMode from "@/components/comparison-mode"
 import { SubredditAutocomplete } from "@/components/subreddit-autocomplete"
 import { AnalysisResultsSkeleton } from "@/components/loading-skeletons"
-import { parseSubreddits, exportToJSON, exportToCSV, formatTimeRange } from "@/lib/utils"
+import { parseSubreddits, exportToJSON, exportToCSV, formatTimeRange, captureScreenshot } from "@/lib/utils"
 
 export default function Home() {
   const [subreddit, setSubreddit] = useState("")
@@ -266,28 +265,8 @@ export default function Home() {
     if (!results || !resultsRef.current) return
 
     try {
-      const canvas = await html2canvas(resultsRef.current, {
-        backgroundColor: '#ffffff',
-        scale: 2, // Higher resolution
-        useCORS: true,
-        allowTaint: true,
-        height: resultsRef.current.scrollHeight,
-        width: resultsRef.current.scrollWidth
-      })
-
-      // Convert canvas to blob and download
-      canvas.toBlob((blob) => {
-        if (blob) {
-          const url = URL.createObjectURL(blob)
-          const link = document.createElement('a')
-          link.href = url
-          link.download = `reddit-analysis-${subreddit}-${timeRange}days-screenshot-${new Date().toISOString().split('T')[0]}.png`
-          document.body.appendChild(link)
-          link.click()
-          document.body.removeChild(link)
-          URL.revokeObjectURL(url)
-        }
-      }, 'image/png')
+      const filename = `reddit-analysis-${subreddit}-${timeRange}days-screenshot-${new Date().toISOString().split('T')[0]}.png`
+      await captureScreenshot(resultsRef.current, filename)
     } catch (error) {
       console.error('Error capturing screenshot:', error)
       // Could add user notification here if needed

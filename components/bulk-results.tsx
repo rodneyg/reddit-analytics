@@ -1,3 +1,4 @@
+import { useRef } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -5,8 +6,8 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { getBestTimesRows, getHeatmapRows, getSuccessfulResults, type BulkResult } from "@/lib/bulk-export"
-import { exportToCSV, exportToJSON } from "@/lib/utils"
-import { CheckCircle, XCircle, AlertCircle, Download } from "lucide-react"
+import { captureScreenshot, exportToCSV, exportToJSON } from "@/lib/utils"
+import { CheckCircle, XCircle, AlertCircle, Camera, Download } from "lucide-react"
 import BestTimesList from "./best-times-list"
 import SubredditHeatmap from "./subreddit-heatmap"
 
@@ -16,6 +17,7 @@ interface BulkResultsProps {
 }
 
 export default function BulkResults({ results, timeRange }: BulkResultsProps) {
+  const resultsRef = useRef<HTMLDivElement>(null)
   const successfulResults = getSuccessfulResults(results)
   const successCount = successfulResults.length
   const errorCount = results.filter(r => r.error).length
@@ -43,8 +45,19 @@ export default function BulkResults({ results, timeRange }: BulkResultsProps) {
     }
   }
 
+  const handleSaveScreenshot = async () => {
+    if (!resultsRef.current) return
+
+    const date = new Date().toISOString().slice(0, 10)
+    try {
+      await captureScreenshot(resultsRef.current, `reddit-bulk-analysis-${timeRange}days-${date}.png`)
+    } catch (error) {
+      console.error("Failed to save screenshot:", error)
+    }
+  }
+
   return (
-    <div className="space-y-6">
+    <div ref={resultsRef} className="space-y-6">
       {/* Summary */}
       <Card>
         <CardHeader className="flex-row flex-wrap items-start justify-between gap-3 space-y-0">
@@ -54,33 +67,39 @@ export default function BulkResults({ results, timeRange }: BulkResultsProps) {
               {results.length} subreddit{results.length > 1 ? 's' : ''}
             </Badge>
           </CardTitle>
-          {successCount > 0 && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button type="button" variant="outline" size="sm">
-                  <Download aria-hidden="true" />
-                  Export Results
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" onEscapeKeyDown={event => event.stopPropagation()}>
-                <DropdownMenuItem onSelect={() => handleExport("json")}>
-                  Export as JSON
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  disabled={!successfulResults.some(result => result.bestTimes?.length)}
-                  onSelect={() => handleExport("best-times")}
-                >
-                  Export Best Times (CSV)
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  disabled={!successfulResults.some(result => result.heatmapData?.length)}
-                  onSelect={() => handleExport("heatmap")}
-                >
-                  Export Heatmap Data (CSV)
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
+          <div className="flex flex-wrap gap-2">
+            {successCount > 0 && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button type="button" variant="outline" size="sm">
+                    <Download aria-hidden="true" />
+                    Export Results
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" onEscapeKeyDown={event => event.stopPropagation()}>
+                  <DropdownMenuItem onSelect={() => handleExport("json")}>
+                    Export as JSON
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    disabled={!successfulResults.some(result => result.bestTimes?.length)}
+                    onSelect={() => handleExport("best-times")}
+                  >
+                    Export Best Times (CSV)
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    disabled={!successfulResults.some(result => result.heatmapData?.length)}
+                    onSelect={() => handleExport("heatmap")}
+                  >
+                    Export Heatmap Data (CSV)
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+            <Button type="button" variant="outline" size="sm" onClick={handleSaveScreenshot}>
+              <Camera aria-hidden="true" />
+              Save Screenshot
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="flex gap-4 text-sm">
