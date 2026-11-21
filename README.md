@@ -8,14 +8,14 @@ This tool analyzes recent posts from a subreddit, calculates when posts get the 
 
 ## 🔍 What It Does
 
-✅ Analyze engagement from the past **7 or 30 days**  
-✅ Calculate score per hour/day *(upvotes + comments)*  
-✅ Display a clean **heatmap** and top 3 time slots  
-✅ Summarize the highest- and lowest-scoring observed times<br>
-✅ Copy insights to clipboard  
-✅ Share pre-filled links to any analysis  
-✅ **NEW: Bulk analysis** - analyze multiple subreddits at once  
-✅ Built with **Reddit OAuth API** for real-time accuracy  
+- Analyze posts from the past **1, 3, 7, 30, or 90 days**.
+- See average engagement (Reddit post score plus comment count) in a heatmap and ranked list of the top three time slots. The list and heatmap tooltips show UTC and your local time.
+- Read a summary of the highest- and lowest-scoring observed time slots for a single subreddit.
+- Use subreddit suggestions while typing or enable Comparison Mode to compare analyses side by side.
+- Download single-subreddit results as JSON, CSV, PNG, or text reports.
+- Analyze up to 10 subreddits at once and export successful bulk results as JSON or CSV.
+
+See the [changelog](CHANGELOG.md) for the history of these features.
 
 ---
 
@@ -25,7 +25,6 @@ This tool analyzes recent posts from a subreddit, calculates when posts get the 
 - TypeScript
 - Tailwind CSS
 - Recharts (for visualizations)
-- Firebase *(planned: auth + history logging)*
 - Vercel (frontend deployment)
 - Express + Node.js *(backend via Render)*
 
@@ -64,69 +63,39 @@ technology, programming
 - Up to 10 subreddits per request
 - Progress indicator showing analysis status
 - Tabbed interface for easy browsing between results
-- Automatic parsing of Reddit URLs (r/subreddit, reddit.com/r/subreddit)
-- Error handling for individual failed analyses
+- Accepts subreddit names and `r/subreddit` prefixes
+- Error messages for individual failed analyses and a **Retry** button if the backend is waking up
+- JSON export and separate CSV exports for best times and heatmap data
 
 ---
 
 ## 🚀 Get Started
 
-```bash
-git clone https://github.com/yourusername/reddit-analyzer.git
-cd reddit-analyzer
-npm install
-```
-
-### 2. Deploy your own backend
-
-Use the provided backend repo to handle Reddit OAuth securely:
-
-🔗 https://github.com/rodneyg/reddit-analyzer-backend
-
-Deploy it on Render, set these environment variables:
-
-```
-REDDIT_CLIENT_ID=your_id
-REDDIT_CLIENT_SECRET=your_secret
-REDDIT_USERNAME=your_reddit_username
-REDDIT_PASSWORD=your_reddit_password
-```
-
-### 3. Connect frontend to backend
-
-Update your frontend API route (e.g. route.ts) to point to your backend’s Render URL:
-
-```javascript
-const BASE_URL = "https://your-backend.onrender.com"
-```
-
-### 4. Start frontend locally
+Clone the frontend and run it locally:
 
 ```bash
+git clone https://github.com/rodneyg/reddit-analytics.git
+cd reddit-analytics
+npm ci --legacy-peer-deps
 npm run dev
 ```
 
-Then visit http://localhost:3000
+Next.js prints the local URL when it starts.
 
-⸻
+The single and bulk API routes use the hosted analyzer backend on Render by default. To use your own backend, follow the [backend setup instructions](https://github.com/rodneyg/reddit-analyzer-backend) and change the backend URL in `lib/analyzer-backend.ts`. Set Reddit OAuth credentials on the backend.
 
 ## 🧠 How It Works
-	•	Fetches latest ~500 Reddit posts using Reddit OAuth API
-	•	Aggregates post scores by day and hour (UTC)
-	•	Builds a day/hour heatmap of average engagement
-	•	Filters low-signal data for clarity
-	•	Ranks top 3 time slots with highest average score
-	•	Summarizes the observed engagement scores in the browser
-	•	Supports clipboard copy + shareable links
 
-⸻
+- The frontend requests up to 100 recent posts per subreddit through the analyzer backend.
+- The backend filters posts to the selected date range, groups them by UTC day and hour, and averages the engagement score within each group.
+- The browser displays the heatmap and the three highest-scoring time slots when available. Single-subreddit analysis also summarizes the observed scores.
 
 ## 🙌 Credits
 
 Built by Rodney Gainous Jr
 
 If you found it useful:  
-☕ Support on Ko-fi
+☕ [Support on Ko-fi](https://ko-fi.com/rg2official)
 
 ⸻
 
