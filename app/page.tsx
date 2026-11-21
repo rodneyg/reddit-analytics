@@ -138,94 +138,23 @@ export default function Home() {
 
       setResults(data)
 
-      // Create comprehensive data-driven insights
-      const topTimes = data.bestTimes.slice(0, 5)
-      const worstTimes = data.bestTimes.slice(-3)
-      const avgScore = data.bestTimes.reduce((sum: number, time: any) => sum + time.score, 0) / data.bestTimes.length
-      const bestScore = Math.max(...data.bestTimes.map((t: any) => t.score))
-      const worstScore = Math.min(...data.bestTimes.map((t: any) => t.score))
-      const scoreRange = bestScore - worstScore
-      
-      // Analyze patterns by day and hour
-      const dayStats = data.heatmapData.reduce((acc: any, item: any) => {
-        if (!acc[item.day]) acc[item.day] = { total: 0, count: 0 }
-        acc[item.day].total += item.z
-        acc[item.day].count += 1
-        return acc
-      }, {})
-      
-      const hourStats = data.heatmapData.reduce((acc: any, item: any) => {
-        if (!acc[item.hour]) acc[item.hour] = { total: 0, count: 0 }
-        acc[item.hour].total += item.z
-        acc[item.hour].count += 1
-        return acc
-      }, {})
-      
-      const bestDays = Object.entries(dayStats)
-        .map(([day, stats]: [string, any]) => ({ day, avg: stats.total / stats.count }))
-        .sort((a, b) => b.avg - a.avg)
-        .slice(0, 3)
-        
-      const bestHours = Object.entries(hourStats)
-        .map(([hour, stats]: [string, any]) => ({ hour: parseInt(hour), avg: stats.total / stats.count }))
-        .sort((a, b) => b.avg - a.avg)
-        .slice(0, 3)
-
-      const prompt = `As a Reddit analytics expert, provide strategic posting insights for r/${subreddit} based on ${timeRange} days of data analysis.
-
-DATA SUMMARY:
-- Total time slots analyzed: ${data.heatmapData.length}
-- Best posting time: ${topTimes[0].formattedTime} (score: ${topTimes[0].score.toFixed(2)})
-- Average performance score: ${avgScore.toFixed(2)}
-- Performance range: ${worstScore.toFixed(2)} to ${bestScore.toFixed(2)} (range: ${scoreRange.toFixed(2)})
-
-TOP 5 BEST TIMES:
-${topTimes.map((t: any, i: number) => `${i+1}. ${t.formattedTime} - Score: ${t.score.toFixed(2)}`).join('\n')}
-
-WORST 3 TIMES TO AVOID:
-${worstTimes.map((t: any, i: number) => `${i+1}. ${t.formattedTime} - Score: ${t.score.toFixed(2)}`).join('\n')}
-
-BEST DAYS OF WEEK:
-${bestDays.map((d: any, i: number) => `${i+1}. ${d.day} - Avg: ${d.avg.toFixed(2)}`).join('\n')}
-
-BEST HOURS OF DAY:
-${bestHours.map((h: any, i: number) => `${i+1}. ${h.hour}:00 - Avg: ${h.avg.toFixed(2)}`).join('\n')}
-
-Provide actionable insights covering:
-1. Optimal posting strategy based on the data
-2. Patterns observed in day/time preferences
-3. Score distribution analysis and what it means
-4. Specific recommendations for maximizing engagement
-5. Times to avoid and why
-
-Keep insights practical, data-driven, and concise (3-4 paragraphs max).`
-
-      const gptRes = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${process.env.NEXT_PUBLIC_OPENAI_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "gpt-4",
-          messages: [{ role: "user", content: prompt }],
-          temperature: 0.7,
-        }),
-      })
-
-      if (!gptRes.ok) {
-        const errorText = await gptRes.text()
-        console.error("❌ GPT error:", gptRes.status, errorText)
-        setInsight("No insights returned from AI.")
-        return
-      }
-
-      const gptJson = await gptRes.json()
-      const aiContent = gptJson.choices?.[0]?.message?.content?.trim()
-      console.log("🧠 Insight generated:", aiContent)
-      const finalInsight = aiContent || "No insights returned from AI."
+      const topTime = data.bestTimes[0]
+      const lowestSlot = data.heatmapData.reduce(
+        (lowest: { formattedTime: string; z: number } | undefined, slot: { formattedTime: string; z: number }) =>
+          !lowest || slot.z < lowest.z ? slot : lowest,
+        undefined,
+      )
+      const finalInsight = topTime
+        ? [
+            `Try posting around ${topTime.formattedTime} UTC. It had the highest average engagement score (${topTime.score.toFixed(2)}) in this sample.`,
+            lowestSlot && lowestSlot.z < topTime.score
+              ? `The lowest-scoring observed time was ${lowestSlot.formattedTime} UTC (${lowestSlot.z.toFixed(2)}).`
+              : "",
+            `Only ${data.heatmapData.length} time slots had posts to measure. Compare results across several posts before changing your schedule.`,
+          ].filter(Boolean).join("\n\n")
+        : "There were no posting times to compare in this date range."
       setInsight(finalInsight)
-      
+
       // Add to comparison mode if enabled
       if (isComparisonMode) {
         const comparisonResult = {

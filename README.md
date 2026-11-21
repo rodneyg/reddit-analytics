@@ -2,7 +2,7 @@
 
 **Find the best time to post on any subreddit, based on real engagement data.**
 
-This tool analyzes recent posts from a subreddit, calculates when posts get the most upvotes and comments, and visualizes the best posting times with a heatmap, a top-times list, and GPT-powered strategic insights.
+This tool analyzes recent posts from a subreddit, calculates when posts get the most upvotes and comments, and visualizes the best posting times with a heatmap, a top-times list, and a summary based on the observed scores.
 
 ---
 
@@ -11,7 +11,7 @@ This tool analyzes recent posts from a subreddit, calculates when posts get the 
 ✅ Analyze engagement from the past **7 or 30 days**  
 ✅ Calculate score per hour/day *(upvotes + comments)*  
 ✅ Display a clean **heatmap** and top 3 time slots  
-✅ Generate GPT-powered strategy summaries  
+✅ Summarize the highest- and lowest-scoring observed times<br>
 ✅ Copy insights to clipboard  
 ✅ Share pre-filled links to any analysis  
 ✅ **NEW: Bulk analysis** - analyze multiple subreddits at once  
@@ -25,7 +25,6 @@ This tool analyzes recent posts from a subreddit, calculates when posts get the 
 - TypeScript
 - Tailwind CSS
 - Recharts (for visualizations)
-- OpenAI API (strategic insights)
 - Firebase *(planned: auth + history logging)*
 - Vercel (frontend deployment)
 - Express + Node.js *(backend via Render)*
@@ -117,7 +116,7 @@ Then visit http://localhost:3000
 	•	Builds a day/hour heatmap of average engagement
 	•	Filters low-signal data for clarity
 	•	Ranks top 3 time slots with highest average score
-	•	Uses OpenAI to write a concise posting strategy
+	•	Summarizes the observed engagement scores in the browser
 	•	Supports clipboard copy + shareable links
 
 ⸻
