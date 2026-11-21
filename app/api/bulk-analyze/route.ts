@@ -1,12 +1,12 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { analyzerDeadline, AnalyzerWakingError, fetchAnalysis } from "@/lib/analyzer-backend"
+
+export const maxDuration = 60
 
 const CACHE_TTL = 24 * 60 * 60 * 1000
 const cache = new Map()
 
-// Individual request timeout (20 seconds)
-const INDIVIDUAL_REQUEST_TIMEOUT = 20000
-
-async function analyzeSubreddit(subreddit: string, days: string): Promise<{ subreddit: string; data?: any; error?: string }> {
+async function analyzeSubreddit(subreddit: string, days: string, signal: AbortSignal): Promise<{ subreddit: string; data?: any; error?: string }> {
   const cleanSubreddit = subreddit.trim().toLowerCase()
   if (!cleanSubreddit) {
     return { subreddit: cleanSubreddit, error: "Invalid subreddit name" }
@@ -20,30 +20,11 @@ async function analyzeSubreddit(subreddit: string, days: string): Promise<{ subr
     if (cachedData && Date.now() - cachedData.timestamp < CACHE_TTL) {
       data = cachedData.data
     } else {
-      // Create AbortController for individual request timeout
-      const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), INDIVIDUAL_REQUEST_TIMEOUT)
-
-      try {
-        const response = await fetch(`https://reddit-analyzer-backend.onrender.com/analyze?subreddit=${cleanSubreddit}&days=${days}&limit=100`, {
-          signal: controller.signal
-        })
-        
-        clearTimeout(timeoutId)
-        
-        if (!response.ok) {
-          throw new Error(`Backend error: ${response.status}`)
-        }
-
-        data = await response.json()
-        cache.set(cacheKey, {
-          timestamp: Date.now(),
-          data,
-        })
-      } catch (error) {
-        clearTimeout(timeoutId)
-        throw error
-      }
+      data = await fetchAnalysis(cleanSubreddit, days, signal)
+      cache.set(cacheKey, {
+        timestamp: Date.now(),
+        data,
+      })
     }
 
     return {
@@ -51,6 +32,8 @@ async function analyzeSubreddit(subreddit: string, days: string): Promise<{ subr
       data
     }
   } catch (error) {
+    if (error instanceof AnalyzerWakingError) throw error
+
     console.error(`Error analyzing subreddit ${cleanSubreddit}:`, error)
     return {
       subreddit: cleanSubreddit,
@@ -89,15 +72,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Maximum 10 subreddits allowed per request" }, { status: 400 })
     }
 
+    // Share one timeout across all batches.
+    const signal = analyzerDeadline()
+
     // Process subreddits in parallel batches of 3 to balance speed and backend load
     const results = await processInBatches(
       subreddits,
       3, // Process 3 subreddits at a time
-      (subreddit) => analyzeSubreddit(subreddit, days)
+      (subreddit) => analyzeSubreddit(subreddit, days, signal)
     )
 
     return NextResponse.json({ results })
   } catch (error) {
+    if (error instanceof AnalyzerWakingError) {
+      return NextResponse.json({ error: error.message }, { status: 503 })
+    }
+
     console.error("Error in bulk analysis:", error)
     return NextResponse.json({ error: "Failed to process bulk analysis" }, { status: 500 })
   }
