@@ -4,16 +4,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { CheckCircle, XCircle, AlertCircle, Camera } from "lucide-react"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { getBestTimesRows, getHeatmapRows, getSuccessfulResults, type BulkResult } from "@/lib/bulk-export"
+import { captureScreenshot, exportToCSV, exportToJSON } from "@/lib/utils"
+import { CheckCircle, XCircle, AlertCircle, Camera, Download } from "lucide-react"
 import BestTimesList from "./best-times-list"
 import SubredditHeatmap from "./subreddit-heatmap"
-import { captureScreenshot } from "@/lib/utils"
-
-interface BulkResult {
-  subreddit: string
-  data?: any
-  error?: string
-}
 
 interface BulkResultsProps {
   results: BulkResult[]
@@ -22,17 +18,41 @@ interface BulkResultsProps {
 
 export default function BulkResults({ results, timeRange }: BulkResultsProps) {
   const resultsRef = useRef<HTMLDivElement>(null)
-  const successCount = results.filter(r => r.data && !r.error).length
+  const successfulResults = getSuccessfulResults(results)
+  const successCount = successfulResults.length
   const errorCount = results.filter(r => r.error).length
+
+  const handleExport = (format: "json" | "best-times" | "heatmap") => {
+    const exportDate = new Date().toISOString()
+    const filename = `reddit-bulk-analysis-${timeRange}days-${exportDate.slice(0, 10)}`
+
+    if (format === "json") {
+      exportToJSON({
+        type: "bulk-analysis",
+        timeRange: `${timeRange} days`,
+        timezone: "UTC",
+        exportDate,
+        subreddits: successfulResults,
+        summary: {
+          totalSubreddits: results.length,
+          successfulAnalyses: successCount,
+          failedAnalyses: errorCount,
+        },
+      }, `${filename}.json`)
+    } else {
+      const rows = format === "best-times" ? getBestTimesRows(successfulResults) : getHeatmapRows(successfulResults)
+      exportToCSV(rows, `${filename}-${format}.csv`)
+    }
+  }
 
   const handleSaveScreenshot = async () => {
     if (!resultsRef.current) return
 
+    const date = new Date().toISOString().slice(0, 10)
     try {
-      const filename = `reddit-bulk-analysis-${timeRange}days-${new Date().toISOString().split('T')[0]}.png`
-      await captureScreenshot(resultsRef.current, filename)
+      await captureScreenshot(resultsRef.current, `reddit-bulk-analysis-${timeRange}days-${date}.png`)
     } catch (error) {
-      console.error('Failed to save screenshot:', error)
+      console.error("Failed to save screenshot:", error)
     }
   }
 
@@ -40,21 +60,43 @@ export default function BulkResults({ results, timeRange }: BulkResultsProps) {
     <div ref={resultsRef} className="space-y-6">
       {/* Summary */}
       <Card>
-        <CardHeader>
-          <div className="flex flex-wrap items-start justify-between gap-2">
-            <CardTitle className="flex flex-wrap items-center gap-2">
-              Bulk Analysis Results
-              <Badge variant="outline">
-                {results.length} subreddit{results.length > 1 ? 's' : ''}
-              </Badge>
-            </CardTitle>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleSaveScreenshot}
-              className="flex items-center gap-2"
-            >
-              <Camera className="h-4 w-4" />
+        <CardHeader className="flex-row flex-wrap items-start justify-between gap-3 space-y-0">
+          <CardTitle className="flex flex-wrap items-center gap-2">
+            Bulk Analysis Results
+            <Badge variant="outline">
+              {results.length} subreddit{results.length > 1 ? 's' : ''}
+            </Badge>
+          </CardTitle>
+          <div className="flex flex-wrap gap-2">
+            {successCount > 0 && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button type="button" variant="outline" size="sm">
+                    <Download aria-hidden="true" />
+                    Export Results
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" onEscapeKeyDown={event => event.stopPropagation()}>
+                  <DropdownMenuItem onSelect={() => handleExport("json")}>
+                    Export as JSON
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    disabled={!successfulResults.some(result => result.bestTimes?.length)}
+                    onSelect={() => handleExport("best-times")}
+                  >
+                    Export Best Times (CSV)
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    disabled={!successfulResults.some(result => result.heatmapData?.length)}
+                    onSelect={() => handleExport("heatmap")}
+                  >
+                    Export Heatmap Data (CSV)
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+            <Button type="button" variant="outline" size="sm" onClick={handleSaveScreenshot}>
+              <Camera aria-hidden="true" />
               Save Screenshot
             </Button>
           </div>
@@ -109,8 +151,8 @@ export default function BulkResults({ results, timeRange }: BulkResultsProps) {
                   <h2 className="text-2xl font-bold">r/{result.subreddit}</h2>
                   <p className="text-muted-foreground">Analysis for past {timeRange} days</p>
                 </div>
-                <BestTimesList bestTimes={result.data.bestTimes} />
-                <SubredditHeatmap heatmapData={result.data.heatmapData} />
+                <BestTimesList bestTimes={result.data.bestTimes ?? []} />
+                <SubredditHeatmap heatmapData={result.data.heatmapData ?? []} />
               </div>
             ) : (
               <Alert>
