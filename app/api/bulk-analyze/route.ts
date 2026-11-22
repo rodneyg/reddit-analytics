@@ -1,15 +1,17 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { analyzerDeadline, AnalyzerNoPostsError, AnalyzerWakingError, fetchAnalysis } from "@/lib/analyzer-backend"
+import { normalizeAnalysisDays, normalizeSubreddit } from "@/lib/analyzer-input"
 
 export const maxDuration = 60
 
 const CACHE_TTL = 24 * 60 * 60 * 1000
 const cache = new Map()
 
-async function analyzeSubreddit(subreddit: string, days: string, signal: AbortSignal): Promise<{ subreddit: string; data?: any; error?: string }> {
-  const cleanSubreddit = subreddit.trim().toLowerCase()
+async function analyzeSubreddit(subreddit: unknown, days: string, signal: AbortSignal): Promise<{ subreddit: string; data?: any; error?: string }> {
+  const cleanSubreddit = normalizeSubreddit(subreddit)
   if (!cleanSubreddit) {
-    return { subreddit: cleanSubreddit, error: "Invalid subreddit name" }
+    const label = typeof subreddit === "string" ? subreddit.trim().toLowerCase() : ""
+    return { subreddit: label, error: "Invalid subreddit name" }
   }
 
   const cacheKey = `${cleanSubreddit}-${days}`
@@ -62,18 +64,31 @@ async function processInBatches<T>(items: T[], batchSize: number, processor: (it
 }
 
 export async function POST(request: NextRequest) {
+  let body: unknown
   try {
-    const body = await request.json()
-    const { subreddits, days = "30" } = body
+    body = await request.json()
+  } catch {
+    return NextResponse.json({ error: "Request body must be valid JSON" }, { status: 400 })
+  }
 
-    if (!subreddits || !Array.isArray(subreddits) || subreddits.length === 0) {
-      return NextResponse.json({ error: "Subreddits array is required" }, { status: 400 })
-    }
+  if (!body || typeof body !== "object" || !("subreddits" in body)) {
+    return NextResponse.json({ error: "Subreddits array is required" }, { status: 400 })
+  }
 
-    if (subreddits.length > 10) {
-      return NextResponse.json({ error: "Maximum 10 subreddits allowed per request" }, { status: 400 })
-    }
+  const { subreddits } = body
+  if (!Array.isArray(subreddits) || subreddits.length === 0) {
+    return NextResponse.json({ error: "Subreddits array is required" }, { status: 400 })
+  }
+  if (subreddits.length > 10) {
+    return NextResponse.json({ error: "Maximum 10 subreddits allowed per request" }, { status: 400 })
+  }
 
+  const days = normalizeAnalysisDays("days" in body ? body.days : "30")
+  if (!days) {
+    return NextResponse.json({ error: "Days must be a positive whole number" }, { status: 400 })
+  }
+
+  try {
     // Share one timeout across all batches.
     const signal = analyzerDeadline()
 
