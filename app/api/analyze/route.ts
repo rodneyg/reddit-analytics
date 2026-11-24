@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { analyzerDeadline, AnalyzerNoPostsError, AnalyzerWakingError, fetchAnalysis } from "@/lib/analyzer-backend"
+import { normalizeAnalysisDays, normalizeSubreddit } from "@/lib/analyzer-input"
 
 export const maxDuration = 60
 
@@ -8,11 +9,15 @@ const cache = new Map()
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams
-  const subreddit = searchParams.get("subreddit")
-  const days = searchParams.get("days") || "30"
+  const input = searchParams.get("subreddit")
+  const subreddit = normalizeSubreddit(input)
+  const days = normalizeAnalysisDays(searchParams.get("days") ?? "30")
 
   if (!subreddit) {
-    return NextResponse.json({ error: "Subreddit is required" }, { status: 400 })
+    return NextResponse.json({ error: input ? "Invalid subreddit name" : "Subreddit is required" }, { status: 400 })
+  }
+  if (!days) {
+    return NextResponse.json({ error: "Days must be a positive whole number" }, { status: 400 })
   }
 
   const cacheKey = `${subreddit}-${days}`
