@@ -63,7 +63,7 @@ technology, programming
 - Up to 10 subreddits per request
 - Estimated progress while the batch runs
 - Tabbed interface for easy browsing between results
-- Accepts subreddit names and `r/subreddit` prefixes
+- Accepts subreddit names with an optional `r/` or `/r/` prefix. Names may use only letters, numbers, and underscores. Other entries show an "Invalid subreddit name" error on their tab
 - JSON export and separate CSV exports for best times and heatmap data
 
 ---

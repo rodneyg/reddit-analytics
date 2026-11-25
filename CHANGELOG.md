@@ -2,6 +2,10 @@
 
 Dates reflect when each change merged into `main` (UTC).
 
+## 2026-11-23
+
+- Reject invalid subreddit names and day counts with a clear error message in single and bulk analysis. [#33](https://github.com/rodneyg/reddit-analytics/pull/33)
+
 ## 2026-11-21
 
 - Download successful bulk results as JSON, best-times CSV, or heatmap CSV. [#25](https://github.com/rodneyg/reddit-analytics/pull/25)
