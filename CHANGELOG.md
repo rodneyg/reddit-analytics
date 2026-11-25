@@ -2,14 +2,18 @@
 
 Dates reflect when each change merged into `main` (UTC).
 
+## 2026-11-25
+
+- Show a branded image when the analyzer link is shared, and add a canonical homepage URL, robots.txt, and a sitemap for search crawlers. [#35](https://github.com/rodneyg/reddit-analytics/pull/35)
+
 ## 2026-11-23
 
-- Reject invalid subreddit names and day counts with a clear error message in single and bulk analysis. [#33](https://github.com/rodneyg/reddit-analytics/pull/33)
+- Reject invalid subreddit names and day counts in both analysis APIs. In the bulk form, show invalid parsed entries on their own result tabs. [#33](https://github.com/rodneyg/reddit-analytics/pull/33)
 
 ## 2026-11-21
 
 - Download successful bulk results as JSON, best-times CSV, or heatmap CSV. [#25](https://github.com/rodneyg/reddit-analytics/pull/25)
-- Read a summary of the highest- and lowest-scoring observed posting times, generated directly from the analysis data. [#26](https://github.com/rodneyg/reddit-analytics/pull/26)
+- Read a summary of the highest-scoring observed posting time, plus the lowest-scoring time when it differs, using the analysis data. [#26](https://github.com/rodneyg/reddit-analytics/pull/26)
 - Explain when there are no posts to analyze, and show the correct UTC hour in heatmap tooltips and single and bulk CSV exports. [#28](https://github.com/rodneyg/reddit-analytics/pull/28)
 - Add Vercel Web Analytics for page views when enabled on the project. [#29](https://github.com/rodneyg/reddit-analytics/pull/29)
 - Make the time range picker keyboard accessible, label the help buttons for screen readers, and improve text contrast. [#31](https://github.com/rodneyg/reddit-analytics/pull/31)
