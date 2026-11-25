@@ -1,8 +1,8 @@
 # Reddit Post Time Analyzer
 
-**See when recent posts in a subreddit received the most engagement.**
+**See which posting times had the highest average engagement in a sample of recent subreddit posts.**
 
-This tool analyzes recent posts from a subreddit, calculates when posts get the highest combined Reddit scores and comment counts, and visualizes the best posting times with a heatmap, a top-times list, and a summary based on the observed scores.
+This tool groups recent subreddit posts by when they were published and ranks those time slots by average engagement (Reddit post score plus comment count). It shows the results in a heatmap, a ranked list, and a summary.
 
 ---
 
@@ -63,7 +63,7 @@ technology, programming
 - Up to 10 subreddits per request
 - Estimated progress while the batch runs
 - Tabbed interface for easy browsing between results
-- Accepts subreddit names with an optional `r/` or `/r/` prefix. Names may use only letters, numbers, and underscores. Other entries show an "Invalid subreddit name" error on their tab
+- Accepts subreddit names with an optional `r/` or `/r/` prefix. Names may use only letters, numbers, and underscores. The form splits input on commas, spaces, newlines, and bullet markers, including hyphens. If a resulting entry contains invalid characters, its tab shows "Invalid subreddit name".
 - JSON export and separate CSV exports for best times and heatmap data
 
 ---
