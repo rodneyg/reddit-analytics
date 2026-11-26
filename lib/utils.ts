@@ -128,8 +128,8 @@ export function parseSubreddits(input: string): string[] {
 }
 
 // Export utilities
-export function downloadFile(content: string, filename: string, mimeType: string) {
-  const blob = new Blob([content], { type: mimeType })
+export function downloadFile(content: string | Blob, filename: string, mimeType: string) {
+  const blob = typeof content === 'string' ? new Blob([content], { type: mimeType }) : content
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.href = url
@@ -164,6 +164,21 @@ export function exportToCSV(data: any[], filename: string) {
   ].join('\n')
   
   downloadFile(csvContent, filename, 'text/csv')
+}
+
+export async function captureScreenshot(element: HTMLElement, filename: string) {
+  const { default: html2canvas } = await import('html2canvas')
+  const canvas = await html2canvas(element, {
+    backgroundColor: '#ffffff',
+    scale: 2,
+    logging: false,
+    useCORS: true,
+    height: element.scrollHeight,
+    width: element.scrollWidth,
+  })
+  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'))
+  if (!blob) throw new Error('Could not create the screenshot PNG')
+  downloadFile(blob, filename, 'image/png')
 }
 
 // Format time range for display
