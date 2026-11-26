@@ -7,13 +7,7 @@ export const maxDuration = 60
 const CACHE_TTL = 24 * 60 * 60 * 1000
 const cache = new Map()
 
-async function analyzeSubreddit(subreddit: unknown, days: string, signal: AbortSignal): Promise<{ subreddit: string; data?: any; error?: string }> {
-  const cleanSubreddit = normalizeSubreddit(subreddit)
-  if (!cleanSubreddit) {
-    const label = typeof subreddit === "string" ? subreddit.trim().toLowerCase() : ""
-    return { subreddit: label, error: "Invalid subreddit name" }
-  }
-
+async function analyzeSubreddit(cleanSubreddit: string, days: string, signal: AbortSignal): Promise<{ subreddit: string; data?: any; error?: string }> {
   const cacheKey = `${cleanSubreddit}-${days}`
   const cachedData = cache.get(cacheKey)
 
@@ -89,15 +83,24 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    // Share one timeout across all batches.
+    // Share the timeout and lookups across batches in this request.
     const signal = analyzerDeadline()
+    const analyses = new Map<string, ReturnType<typeof analyzeSubreddit>>()
 
-    // Process subreddits in parallel batches of 3 to balance speed and backend load
-    const results = await processInBatches(
-      subreddits,
-      3, // Process 3 subreddits at a time
-      (subreddit) => analyzeSubreddit(subreddit, days, signal)
-    )
+    const results = await processInBatches(subreddits, 3, async (subreddit) => {
+      const name = normalizeSubreddit(subreddit)
+      if (!name) {
+        const label = typeof subreddit === "string" ? subreddit.trim().toLowerCase() : ""
+        return { subreddit: label, error: "Invalid subreddit name" }
+      }
+
+      let analysis = analyses.get(name)
+      if (!analysis) {
+        analysis = analyzeSubreddit(name, days, signal)
+        analyses.set(name, analysis)
+      }
+      return analysis
+    })
 
     return NextResponse.json({ results })
   } catch (error) {
