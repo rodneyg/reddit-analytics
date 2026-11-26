@@ -8,12 +8,13 @@ This tool groups recent subreddit posts by when they were published and ranks th
 
 ## 🔍 What It Does
 
-- Choose a range of **1, 3, 7, 30, or 90 days**. The frontend sends that choice. The default backend analyzes the latest available posts regardless of the selected range.
+- Choose a range of **1, 3, 7, 30, or 90 days**. The default backend samples recent posts within the requested range.
 - See average engagement (Reddit post score plus comment count) in a heatmap and ranked list of up to three time slots. The list and heatmap tooltips show UTC and your local time.
 - Read a summary of the highest-scoring time slot for a single subreddit. The summary also gives the lowest-scoring slot when its score differs from the highest.
 - Use subreddit suggestions while typing or enable Comparison Mode to compare analyses side by side.
-- Download single-subreddit results as JSON, CSV, PNG, or text reports.
+- Download single-subreddit results as JSON, CSV, or text reports. Use **Save image** to download a PNG of single or bulk results.
 - Analyze up to 10 subreddits at once and export successful bulk results as JSON or CSV.
+- See the sample count, oldest and newest post times in UTC, and whether the listing was cut short when the backend includes sample details.
 
 See the [changelog](CHANGELOG.md) for the history of these features.
 
@@ -70,7 +71,7 @@ technology, programming
 
 ## Empty results and errors
 
-- If a subreddit has no posts to analyze, check its spelling. Try a longer range if your backend supports date filtering.
+- If a subreddit has no posts to analyze, check its spelling. Try a longer date range.
 - When a batch returns individual failures, the affected subreddit tabs show the errors alongside the successful results. The export menu is available when at least one analysis succeeds.
 - If the analyzer says the backend is waking up, wait a few seconds and select **Retry**. In bulk mode, this retries the whole batch.
 
@@ -101,7 +102,7 @@ The backend listens on port 3001 by default. You can set `PORT` in the backend e
 
 ## 🧠 How It Works
 
-- The frontend requests up to 100 recent posts per subreddit through the analyzer backend.
+- The frontend requests up to 100 posts per page. The default backend reads up to 10 pages per subreddit and stops early if it reaches the date cutoff, the end of the listing, or Reddit reports that its rate allowance is exhausted.
 - The default backend groups those posts by UTC day and hour, then averages the engagement score within each group.
 - The browser displays the heatmap and the three highest-scoring time slots when available. Single-subreddit analysis also summarizes the observed scores.
 
