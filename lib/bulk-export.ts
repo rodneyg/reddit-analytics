@@ -1,3 +1,5 @@
+import type { AnalysisSample } from "../components/analysis-sample"
+
 interface PostingTime {
   day: string
   formattedTime: string
@@ -6,6 +8,7 @@ interface PostingTime {
 export interface BulkResult {
   subreddit: string
   data?: {
+    sample?: AnalysisSample
     bestTimes?: (PostingTime & { hour: number; score: number })[]
     heatmapData?: (PostingTime & { x: number; y: number; z: number })[]
   }
