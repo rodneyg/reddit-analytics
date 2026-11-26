@@ -19,9 +19,26 @@ import BulkResults from "@/components/bulk-results"
 import ComparisonMode from "@/components/comparison-mode"
 import { SubredditAutocomplete } from "@/components/subreddit-autocomplete"
 import { AnalysisResultsSkeleton } from "@/components/loading-skeletons"
+import { normalizeSubreddit } from "@/lib/analyzer-input"
+import type { BulkResult } from "@/lib/bulk-export"
 import { parseSubreddits, exportToJSON, exportToCSV, formatTimeRange, captureScreenshot } from "@/lib/utils"
 
 const timeRanges = ["1", "3", "7", "30", "90"]
+
+interface SingleAnalysis {
+  subreddit: string
+  timeRange: string
+  data: {
+    bestTimes: React.ComponentProps<typeof BestTimesList>["bestTimes"]
+    heatmapData: React.ComponentProps<typeof SubredditHeatmap>["heatmapData"]
+  }
+  insights: string
+}
+
+interface BulkAnalysis {
+  timeRange: string
+  results: BulkResult[]
+}
 
 export default function Home() {
   const [subreddit, setSubreddit] = useState("")
@@ -30,12 +47,11 @@ export default function Home() {
   const [loading, setLoading] = useState(false)
   const [isRetrying, setIsRetrying] = useState(false)
   const [bulkProgress, setBulkProgress] = useState<{ current: number; total: number } | null>(null)
-  const [results, setResults] = useState<any>(null)
-  const [bulkResults, setBulkResults] = useState<any>(null)
-  const [comparisonResults, setComparisonResults] = useState<any[]>([])
+  const [results, setResults] = useState<SingleAnalysis | null>(null)
+  const [bulkResults, setBulkResults] = useState<BulkAnalysis | null>(null)
+  const [comparisonResults, setComparisonResults] = useState<SingleAnalysis[]>([])
   const [isComparisonMode, setIsComparisonMode] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [insight, setInsight] = useState<string>("")
   const [isBulkMode, setIsBulkMode] = useState(false)
 
   // Ref for the results section to capture in screenshot
@@ -65,7 +81,6 @@ export default function Home() {
           setBulkInput("")
           setResults(null)
           setBulkResults(null)
-          setInsight("")
           setComparisonResults([])
         }
       }
@@ -85,7 +100,7 @@ export default function Home() {
 
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [loading, isBulkMode, isComparisonMode, subreddit, bulkInput, error])
+  }, [loading, isBulkMode, isComparisonMode, subreddit, bulkInput, timeRange, error])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -102,7 +117,6 @@ export default function Home() {
 
     setLoading(true)
     setError(null)
-    setInsight("")
     setResults(null)
     setBulkResults(null)
     setBulkProgress(null)
@@ -133,10 +147,8 @@ export default function Home() {
         throw new Error(`Error ${response.status}: ${text}`)
       }
 
-      const data = await response.json()
+      const data: SingleAnalysis["data"] = await response.json()
       console.log("✅ Received analysis data:", data)
-
-      setResults(data)
 
       const topTime = data.bestTimes[0]
       const lowestSlot = data.heatmapData.reduce(
@@ -153,24 +165,23 @@ export default function Home() {
             `Only ${data.heatmapData.length} time slots had posts to measure. Compare results across several posts before changing your schedule.`,
           ].filter(Boolean).join("\n\n")
         : "There were no posting times to compare in this date range."
-      setInsight(finalInsight)
+      const analysis = {
+        subreddit: normalizeSubreddit(subreddit) ?? subreddit,
+        timeRange,
+        data,
+        insights: finalInsight,
+      }
+      setResults(analysis)
 
-      // Add to comparison mode if enabled
       if (isComparisonMode) {
-        const comparisonResult = {
-          subreddit,
-          timeRange,
-          data,
-          insights: finalInsight
-        }
         setComparisonResults(prev => {
-          const existing = prev.findIndex(r => r.subreddit === subreddit && r.timeRange === timeRange)
+          const existing = prev.findIndex(r => r.subreddit === analysis.subreddit && r.timeRange === analysis.timeRange)
           if (existing >= 0) {
             const updated = [...prev]
-            updated[existing] = comparisonResult
+            updated[existing] = analysis
             return updated
           }
-          return [...prev, comparisonResult]
+          return [...prev, analysis]
         })
       }
     } catch (err: any) {
@@ -217,15 +228,15 @@ export default function Home() {
     if (!results) return
     
     const exportData = {
-      subreddit,
-      timeRange: `${timeRange} days`,
+      subreddit: results.subreddit,
+      timeRange: `${results.timeRange} days`,
       exportDate: new Date().toISOString(),
-      bestTimes: results.bestTimes,
-      heatmapData: results.heatmapData,
-      insights: insight
+      bestTimes: results.data.bestTimes,
+      heatmapData: results.data.heatmapData,
+      insights: results.insights
     }
     
-    const filename = `reddit-analysis-${subreddit}-${timeRange}days-${new Date().toISOString().split('T')[0]}.json`
+    const filename = `reddit-analysis-${results.subreddit}-${results.timeRange}days-${new Date().toISOString().split('T')[0]}.json`
     exportToJSON(exportData, filename)
   }
 
@@ -233,7 +244,7 @@ export default function Home() {
     if (!results) return
     
     // Export best times as CSV
-    const bestTimesData = results.bestTimes.map((time: any, index: number) => ({
+    const bestTimesData = results.data.bestTimes.map((time, index) => ({
       rank: index + 1,
       day: time.day,
       hour: time.hour,
@@ -241,7 +252,7 @@ export default function Home() {
       averageScore: time.score.toFixed(2)
     }))
     
-    const filename = `reddit-analysis-${subreddit}-${timeRange}days-besttimes-${new Date().toISOString().split('T')[0]}.csv`
+    const filename = `reddit-analysis-${results.subreddit}-${results.timeRange}days-besttimes-${new Date().toISOString().split('T')[0]}.csv`
     exportToCSV(bestTimesData, filename)
   }
 
@@ -249,7 +260,7 @@ export default function Home() {
     if (!results) return
     
     // Export heatmap data as CSV
-    const heatmapCSVData = results.heatmapData.map((data: any) => ({
+    const heatmapCSVData = results.data.heatmapData.map((data) => ({
       day: data.day,
       hour: data.x,
       formattedTime: data.formattedTime,
@@ -258,7 +269,7 @@ export default function Home() {
       hourIndex: data.x
     }))
     
-    const filename = `reddit-analysis-${subreddit}-${timeRange}days-heatmap-${new Date().toISOString().split('T')[0]}.csv`
+    const filename = `reddit-analysis-${results.subreddit}-${results.timeRange}days-heatmap-${new Date().toISOString().split('T')[0]}.csv`
     exportToCSV(heatmapCSVData, filename)
   }
 
@@ -266,7 +277,7 @@ export default function Home() {
     if (!results || !resultsRef.current) return
 
     try {
-      const filename = `reddit-analysis-${subreddit}-${timeRange}days-screenshot-${new Date().toISOString().split('T')[0]}.png`
+      const filename = `reddit-analysis-${results.subreddit}-${results.timeRange}days-screenshot-${new Date().toISOString().split('T')[0]}.png`
       await captureScreenshot(resultsRef.current, filename)
     } catch (error) {
       console.error('Error capturing screenshot:', error)
@@ -274,27 +285,20 @@ export default function Home() {
   }
 
   const handleExportInsights = () => {
-    if (!insight) return
-    
-    const insightData = {
-      subreddit,
-      timeRange: formatTimeRange(timeRange),
-      analyzedOn: new Date().toLocaleString(),
-      insights: insight
-    }
-    
+    if (!results?.insights) return
+
     const content = `Reddit Analysis Insights
-Subreddit: r/${subreddit}
-Time Range: ${formatTimeRange(timeRange)}
+Subreddit: r/${results.subreddit}
+Time Range: ${formatTimeRange(results.timeRange)}
 Analyzed: ${new Date().toLocaleString()}
 
-${insight}`
+${results.insights}`
     
     const blob = new Blob([content], { type: 'text/plain' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `reddit-insights-${subreddit}-${timeRange}days-${new Date().toISOString().split('T')[0]}.txt`
+    a.download = `reddit-insights-${results.subreddit}-${results.timeRange}days-${new Date().toISOString().split('T')[0]}.txt`
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)
@@ -304,30 +308,30 @@ ${insight}`
   const handleExportSummary = () => {
     if (!results) return
     
-    const topTimes = results.bestTimes.slice(0, 3).map((time: any, index: number) => 
+    const topTimes = results.data.bestTimes.slice(0, 3).map((time, index) =>
       `${index + 1}. ${time.formattedTime} (Score: ${time.score.toFixed(2)})`
     ).join('\n')
     
     const summaryContent = `Reddit Analysis Summary
-Subreddit: r/${subreddit}
-Time Range: ${formatTimeRange(timeRange)}
+Subreddit: r/${results.subreddit}
+Time Range: ${formatTimeRange(results.timeRange)}
 Analyzed: ${new Date().toLocaleString()}
 
 TOP POSTING TIMES:
 ${topTimes}
 
 INSIGHTS:
-${insight || 'No insights available'}
+${results.insights || 'No insights available'}
 
-Data Points: ${results.heatmapData.length} time slots analyzed
-Best Overall Score: ${Math.max(...results.bestTimes.map((t: any) => t.score)).toFixed(2)}
+Data Points: ${results.data.heatmapData.length} time slots analyzed
+Best Overall Score: ${Math.max(...results.data.bestTimes.map((t) => t.score)).toFixed(2)}
 Generated by Reddit Post Time Analyzer`
     
     const blob = new Blob([summaryContent], { type: 'text/plain' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `reddit-summary-${subreddit}-${timeRange}days-${new Date().toISOString().split('T')[0]}.txt`
+    a.download = `reddit-summary-${results.subreddit}-${results.timeRange}days-${new Date().toISOString().split('T')[0]}.txt`
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)
@@ -404,7 +408,7 @@ Generated by Reddit Post Time Analyzer`
       const data = await response.json()
       console.log("✅ Received bulk analysis data:", data)
 
-      setBulkResults(data.results)
+      setBulkResults({ timeRange, results: data.results })
     } catch (err: any) {
       const maxRetries = 2
       const isServerError = err.name === "AbortError" || (err.message && (err.message.includes("Error 500") || err.message.includes("Error 504") || err.message.includes("Error 502") || err.message.includes("Error 503")))
@@ -632,8 +636,8 @@ Generated by Reddit Post Time Analyzer`
             {results && !loading && !isBulkMode && (
               <div ref={resultsRef} className="mt-8 space-y-8">
                 <div className="text-center">
-                  <h2 className="text-2xl font-bold">r/{subreddit}</h2>
-                  <p className="text-muted-foreground">Analysis for {formatTimeRange(timeRange)}</p>
+                  <h2 className="text-2xl font-bold">r/{results.subreddit}</h2>
+                  <p className="text-muted-foreground">Analysis for {formatTimeRange(results.timeRange)}</p>
                 </div>
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <h3 className="text-lg font-semibold">Results</h3>
@@ -659,7 +663,7 @@ Generated by Reddit Post Time Analyzer`
                         <DropdownMenuItem onClick={handleExportHeatmapCSV}>
                           🔥 Export Heatmap Data (CSV)
                         </DropdownMenuItem>
-                        {insight && (
+                        {results.insights && (
                           <>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem onClick={handleExportInsights}>
@@ -675,12 +679,12 @@ Generated by Reddit Post Time Analyzer`
                     </Button>
                   </div>
                 </div>
-                <BestTimesList bestTimes={results.bestTimes} />
-                <SubredditHeatmap heatmapData={results.heatmapData} />
-                {insight && (
+                <BestTimesList bestTimes={results.data.bestTimes} />
+                <SubredditHeatmap heatmapData={results.data.heatmapData} />
+                {results.insights && (
                   <div className="mt-8 p-6 bg-muted rounded-lg border max-w-3xl mx-auto">
                     <h2 className="text-xl font-semibold mb-2">Strategic Insights</h2>
-                    <p className="whitespace-pre-wrap text-muted-foreground">{insight}</p>
+                    <p className="whitespace-pre-wrap text-muted-foreground">{results.insights}</p>
                   </div>
                 )}
               </div>
@@ -689,7 +693,7 @@ Generated by Reddit Post Time Analyzer`
             {/* Bulk Results */}
             {bulkResults && !loading && isBulkMode && (
               <div className="mt-8">
-                <BulkResults results={bulkResults} timeRange={timeRange} />
+                <BulkResults results={bulkResults.results} timeRange={bulkResults.timeRange} />
               </div>
             )}
 
