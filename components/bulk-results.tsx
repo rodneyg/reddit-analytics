@@ -6,8 +6,9 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { getBestTimesRows, getHeatmapRows, getSuccessfulResults, type BulkResult } from "@/lib/bulk-export"
-import { captureScreenshot, exportToCSV, exportToJSON } from "@/lib/utils"
+import { captureScreenshot, exportToCSV, exportToJSON, formatTimeRange } from "@/lib/utils"
 import { CheckCircle, XCircle, AlertCircle, Camera, Download } from "lucide-react"
+import AnalysisSampleSummary from "./analysis-sample"
 import BestTimesList from "./best-times-list"
 import SubredditHeatmap from "./subreddit-heatmap"
 
@@ -149,7 +150,8 @@ export default function BulkResults({ results, timeRange }: BulkResultsProps) {
               <div className="space-y-8">
                 <div className="text-center">
                   <h2 className="text-2xl font-bold">r/{result.subreddit}</h2>
-                  <p className="text-muted-foreground">Analysis for past {timeRange} days</p>
+                  <p className="text-muted-foreground">Analysis for {formatTimeRange(timeRange)}</p>
+                  <AnalysisSampleSummary sample={result.data.sample} />
                 </div>
                 <BestTimesList bestTimes={result.data.bestTimes ?? []} />
                 <SubredditHeatmap heatmapData={result.data.heatmapData ?? []} />
