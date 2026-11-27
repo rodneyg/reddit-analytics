@@ -4,6 +4,7 @@ Dates reflect when each change merged into `main` (UTC).
 
 ## 2026-11-26
 
+- Reuse subreddit lookups in bulk analysis when inputs repeat, while keeping one result row for each input. [#41](https://github.com/rodneyg/reddit-analytics/pull/41)
 - Use **Save image** to download a PNG of your single or bulk results. [#13](https://github.com/rodneyg/reddit-analytics/pull/13)
 - Keep completed results and downloads tied to the submitted subreddit and date range while you edit the form. [#37](https://github.com/rodneyg/reddit-analytics/pull/37)
 - See how many posts were sampled and the dates and times of the oldest and newest posts in UTC. Single and bulk results also show when the Reddit listing was cut short. [#38](https://github.com/rodneyg/reddit-analytics/pull/38)
