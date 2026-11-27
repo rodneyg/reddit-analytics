@@ -17,7 +17,7 @@ Captured from the live app on November 26, 2026.
 ## 🔍 What It Does
 
 - Choose a range of **1, 3, 7, 30, or 90 days**. The default backend samples recent posts within the requested range.
-- See average engagement (Reddit post score plus comment count) in a heatmap and ranked list of up to three time slots. The list and heatmap tooltips show UTC and your local time.
+- See average engagement (Reddit post score plus comment count) and the number of posts behind each time slot in a heatmap and ranked list of up to three slots. A one-post slot is labeled clearly. The list and heatmap tooltips show UTC and your local time.
 - Read a summary of the highest-scoring time slot for a single subreddit. The summary also gives the lowest-scoring slot when its score differs from the highest.
 - Use subreddit suggestions while typing or enable Comparison Mode to compare analyses side by side.
 - Download single-subreddit results as JSON, CSV, or text reports. Use **Save image** to download a PNG of single or bulk results.

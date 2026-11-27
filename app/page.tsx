@@ -252,7 +252,8 @@ export default function Home() {
       day: time.day,
       hour: time.hour,
       formattedTime: time.formattedTime,
-      averageScore: time.score.toFixed(2)
+      averageScore: time.score.toFixed(2),
+      ...(time.postCount !== undefined ? { postCount: time.postCount } : {})
     }))
     
     const filename = `reddit-analysis-${results.subreddit}-${results.timeRange}days-besttimes-${new Date().toISOString().split('T')[0]}.csv`
@@ -268,6 +269,7 @@ export default function Home() {
       hour: data.x,
       formattedTime: data.formattedTime,
       averageScore: data.z.toFixed(2),
+      ...(data.postCount !== undefined ? { postCount: data.postCount } : {}),
       dayIndex: data.y,
       hourIndex: data.x
     }))
@@ -312,7 +314,7 @@ ${results.insights}`
     if (!results) return
     
     const topTimes = results.data.bestTimes.slice(0, 3).map((time, index) =>
-      `${index + 1}. ${time.formattedTime} (Score: ${time.score.toFixed(2)})`
+      `${index + 1}. ${time.formattedTime} (Score: ${time.score.toFixed(2)}${time.postCount !== undefined ? `, Posts: ${time.postCount}${time.postCount === 1 ? ", this slot rests on one post" : ""}` : ""})`
     ).join('\n')
     
     const summaryContent = `Reddit Analysis Summary

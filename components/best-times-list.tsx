@@ -8,6 +8,7 @@ interface BestTime {
   hour: number
   score: number
   formattedTime: string
+  postCount?: number
 }
 
 interface BestTimesListProps {
@@ -63,6 +64,9 @@ export default function BestTimesList({ bestTimes }: BestTimesListProps) {
               <CardContent className="p-4">
                 <div className="text-lg font-bold leading-tight">{formatBestTime(time)}</div>
                 <div className="text-sm text-muted-foreground mt-2">Avg. Score: {time.score.toFixed(1)}</div>
+                {time.postCount !== undefined && (
+                  <div className="text-sm text-muted-foreground">Based on {time.postCount} {time.postCount === 1 ? "post" : "posts"}{time.postCount === 1 ? ". This slot rests on one post." : "."}</div>
+                )}
               </CardContent>
             </Card>
           ))}

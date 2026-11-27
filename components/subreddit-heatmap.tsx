@@ -12,6 +12,7 @@ interface HeatmapDataPoint {
   z: number // score
   day: string
   formattedTime: string
+  postCount?: number
 }
 
 interface SubredditHeatmapProps {
@@ -97,6 +98,7 @@ export default function SubredditHeatmap({ heatmapData }: SubredditHeatmapProps)
                         <ChartTooltipContent>
                           <ChartTooltipItem label="Time" value={formatTooltipTime(data)} />
                           <ChartTooltipItem label="Avg. Score" value={data.z.toFixed(1)} />
+                          {data.postCount !== undefined && <ChartTooltipItem label="Posts" value={data.postCount === 1 ? "1 post (this slot rests on one post)" : String(data.postCount)} />}
                         </ChartTooltipContent>
                       </ChartTooltip>
                     )
