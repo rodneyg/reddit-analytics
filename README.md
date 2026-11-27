@@ -26,6 +26,14 @@ Captured from the live app on November 26, 2026.
 
 See the [changelog](CHANGELOG.md) for the history of these features.
 
+## Product usage measurement
+
+The production site uses Vercel Web Analytics for aggregate page views and unique visitors. The app does not add an account, cookie, or personal identifier for this measurement. The analytics script is rendered by the app layout, and Web Analytics is enabled for the Vercel project.
+
+To read weekly usage, open the `reddit-analytics` project in Vercel, select **Analytics**, and set the date range to the last 7 days. Read **Visitors** as weekly active visitors. Vercel's unique visitor count is an estimate based on privacy-preserving signals, so treat it as a trend rather than an exact install count. To compare weeks, read the same seven-day range one week earlier and calculate `(current visitors - previous visitors) / previous visitors`.
+
+This measures visits to the web app, not installs. For a comparable weekly active number, use the same Vercel project and seven-day window each week. Page views are not a count of analyses; one visitor may make several requests.
+
 ---
 
 ## 🛠 Tech Stack
