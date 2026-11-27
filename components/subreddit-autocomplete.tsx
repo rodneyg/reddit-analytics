@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Check } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { getSubredditSuggestions } from "@/lib/subreddit-suggestions"
+import { stopEscapePropagation } from "@/lib/escape-dismissal"
 
 interface SubredditAutocompleteProps {
   value: string
@@ -59,13 +60,13 @@ export function SubredditAutocomplete({ value, onValueChange, placeholder = "Ent
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Escape') {
+    if (stopEscapePropagation(e)) {
       setOpen(false)
     }
   }
 
   return (
-    <div className={cn("relative", className)}>
+    <div className={cn("relative", className)} onKeyDown={handleKeyDown}>
       <Input
         ref={inputRef}
         placeholder={placeholder}
@@ -73,7 +74,6 @@ export function SubredditAutocomplete({ value, onValueChange, placeholder = "Ent
         onChange={handleInputChange}
         onFocus={handleInputFocus}
         onBlur={handleInputBlur}
-        onKeyDown={handleKeyDown}
         className="w-full"
       />
       
