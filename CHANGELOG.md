@@ -4,6 +4,7 @@ Dates reflect when each change merged into `main` (UTC).
 
 ## 2026-11-26
 
+- Show how many posts support each best time, heatmap slot, and single or bulk slot export. [#48](https://github.com/rodneyg/reddit-analytics/pull/48)
 - Reuse subreddit lookups in bulk analysis when inputs repeat, while keeping one result row for each input. [#41](https://github.com/rodneyg/reddit-analytics/pull/41)
 - Use **Save image** to download a PNG of your single or bulk results. [#13](https://github.com/rodneyg/reddit-analytics/pull/13)
 - Keep completed results and downloads tied to the submitted subreddit and date range while you edit the form. [#37](https://github.com/rodneyg/reddit-analytics/pull/37)
