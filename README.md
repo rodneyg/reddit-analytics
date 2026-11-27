@@ -4,6 +4,14 @@
 
 This tool groups recent subreddit posts by when they were published and ranks those time slots by average engagement (Reddit post score plus comment count). It shows the results in a heatmap, a ranked list, and a summary.
 
+## Current product screenshots
+
+Captured from the live app on November 26, 2026.
+
+![Reddit Post Time Analyzer home screen with the subreddit field, date range selector, and Analyze button](docs/screenshots/home.png)
+
+![Completed r/technology analysis showing ranked posting times, the engagement heatmap, and strategic insights](docs/screenshots/analysis.png)
+
 ---
 
 ## 🔍 What It Does
