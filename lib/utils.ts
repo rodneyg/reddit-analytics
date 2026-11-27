@@ -28,12 +28,19 @@ export function getTimezoneAbbreviation(timezone: string): string {
   }
 }
 
-export function convertUtcToLocal(day: number, hour: number, timezone: string): { day: number, hour: number } {
+export function convertUtcToLocal(day: number, hour: number, timezone: string, referenceDate = new Date()): { day: number, hour: number } {
   try {
-    // Create a UTC date for the given day/hour
-    // We'll use a reference week starting with Sunday (2024-01-07 is a Sunday)
-    const referenceSunday = new Date('2024-01-07T00:00:00Z')
-    const utcDate = new Date(referenceSunday.getTime() + (day * 24 * 60 * 60 * 1000) + (hour * 60 * 60 * 1000))
+    // Anchor the UTC weekday to this week's Monday so the selected date uses
+    // the correct timezone offset, including weeks that cross a DST change.
+    const weekStart = new Date(Date.UTC(
+      referenceDate.getUTCFullYear(),
+      referenceDate.getUTCMonth(),
+      referenceDate.getUTCDate()
+    ))
+    const daysSinceMonday = (weekStart.getUTCDay() + 6) % 7
+    weekStart.setUTCDate(weekStart.getUTCDate() - daysSinceMonday)
+    const dayOffset = (day + 6) % 7
+    const utcDate = new Date(weekStart.getTime() + (dayOffset * 24 * 60 * 60 * 1000) + (hour * 60 * 60 * 1000))
     
     // Use formatToParts for reliable parsing
     const localDateParts = new Intl.DateTimeFormat('en-CA', {
