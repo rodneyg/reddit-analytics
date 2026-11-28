@@ -14,6 +14,11 @@ test("rejects blank, non-text and malformed community names", () => {
   }
 })
 
+test("accepts subreddit names up to 21 characters and rejects longer names", () => {
+  assert.equal(normalizeSubreddit("a".repeat(21)), "a".repeat(21))
+  assert.equal(normalizeSubreddit("a".repeat(22)), null)
+})
+
 test("accepts positive whole-day ranges as strings or numbers", () => {
   for (const days of [1, 3, 7, 30, 90, 120]) {
     assert.equal(normalizeAnalysisDays(days), String(days))

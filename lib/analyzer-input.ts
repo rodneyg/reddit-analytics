@@ -2,7 +2,7 @@ export function normalizeSubreddit(value: unknown): string | null {
   if (typeof value !== "string") return null
 
   const name = value.trim().toLowerCase().replace(/^\/?r\//, "")
-  return /^[a-z0-9_]+$/.test(name) ? name : null
+  return name.length <= 21 && /^[a-z0-9_]+$/.test(name) ? name : null
 }
 
 export function normalizeAnalysisDays(value: unknown): string | null {
